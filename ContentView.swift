@@ -3,7 +3,6 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var mgr: AlarmManager
     @State private var tab = 0
-    @GestureState private var tabDragOffset: CGFloat = 0
 
     private var debugScreen: String? {
         guard let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--debugScreen"),
@@ -142,18 +141,13 @@ struct ContentView: View {
         ZStack {
             Bedside.bg.ignoresSafeArea()
             VStack(spacing: 0) {
-                GeometryReader { proxy in
-                    let width = proxy.size.width
-                    HStack(spacing: 0) {
-                        HomeView().frame(width: width)
-                        AlarmTabView().frame(width: width)
-                        StatsView().frame(width: width)
-                    }
-                    .offset(x: -CGFloat(tab) * width + tabDragOffset)
-                    .animation(.interactiveSpring(response: 0.42, dampingFraction: 0.78, blendDuration: 0.12), value: tab)
-                    .gesture(pageDragGesture(pageWidth: width))
-                    .clipped()
+                TabView(selection: $tab) {
+                    HomeView().tag(0)
+                    AlarmTabView().tag(1)
+                    StatsView().tag(2)
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .disabled(true)
 
                 HStack(spacing: 0) {
                     tabBtn(index: 0, icon: "house.fill", label: "首页")
@@ -173,7 +167,7 @@ struct ContentView: View {
 
     private func tabBtn(index: Int, icon: String, label: String) -> some View {
         Button {
-            withAnimation(.interactiveSpring(response: 0.42, dampingFraction: 0.78, blendDuration: 0.12)) {
+            withAnimation(.easeInOut(duration: 0.18)) {
                 tab = index
             }
         } label: {
@@ -187,36 +181,6 @@ struct ContentView: View {
         .buttonStyle(.plain)
     }
 
-    private func pageDragGesture(pageWidth: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 18, coordinateSpace: .local)
-            .updating($tabDragOffset) { value, state, _ in
-                let horizontal = value.translation.width
-                let vertical = value.translation.height
-                guard abs(horizontal) > abs(vertical) else { return }
-
-                let isAtLeadingEdge = tab == 0 && horizontal > 0
-                let isAtTrailingEdge = tab == 2 && horizontal < 0
-                let resistance: CGFloat = (isAtLeadingEdge || isAtTrailingEdge) ? 0.34 : 1
-                state = horizontal * resistance
-            }
-            .onEnded { value in
-                let horizontal = value.translation.width
-                let predicted = value.predictedEndTranslation.width
-                guard abs(horizontal) > abs(value.translation.height) else { return }
-
-                let threshold = max(64, pageWidth * 0.18)
-                let shouldMoveLeft = horizontal < -threshold || predicted < -pageWidth * 0.32
-                let shouldMoveRight = horizontal > threshold || predicted > pageWidth * 0.32
-
-                withAnimation(.interactiveSpring(response: 0.42, dampingFraction: 0.76, blendDuration: 0.12)) {
-                    if shouldMoveLeft {
-                        tab = min(tab + 1, 2)
-                    } else if shouldMoveRight {
-                        tab = max(tab - 1, 0)
-                    }
-                }
-            }
-    }
 }
 
 private extension ChallengeType {
@@ -400,72 +364,92 @@ private struct AlarmListCard: View {
     let onToggle: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            HStack(alignment: .center, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
                 BedsideIconBadge(systemName: alarm.isEnabled ? "alarm.fill" : "alarm")
                     .opacity(alarm.isEnabled ? 1 : 0.5)
+                    .padding(.top, 4)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .lastTextBaseline, spacing: 6) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .lastTextBaseline, spacing: 7) {
                         Text(alarm.formattedTime)
-                            .font(.system(size: 34, weight: .light, design: .rounded))
+                            .font(.system(size: 43, weight: .light, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(alarm.isEnabled ? Bedside.amber : Bedside.dim)
                         Text(alarm.formattedPeriod)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(alarm.isEnabled ? Bedside.amber.opacity(0.74) : Bedside.dim)
-                            .padding(.bottom, 5)
+                            .padding(.bottom, 8)
                     }
 
-                    Text(alarm.label)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Bedside.subtext)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(alarm.label)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(alarm.isEnabled ? Bedside.text.opacity(0.9) : Bedside.dim)
+                            .lineLimit(1)
+                        Text(alarm.nextOccurrenceText())
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Bedside.subtext)
+                    }
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 9) {
-                    BedsidePill(text: alarm.challengeType.rawValue, icon: alarm.challengeType.icon)
-                        .opacity(alarm.isEnabled ? 1 : 0.55)
-
-                    Text(alarm.isEnabled ? "已开启" : "已关闭")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(alarm.isEnabled ? Bedside.green : Bedside.dim)
-                }
+                statusPill
+                    .padding(.top, 6)
             }
 
-            HStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
+                BedsidePill(text: "起床挑战 · \(alarm.challengeType.rawValue)", icon: alarm.challengeType.icon)
+                    .opacity(alarm.isEnabled ? 1 : 0.58)
+
+                Spacer(minLength: 8)
+
                 Button(action: onEdit) {
-                    listActionLabel("修改挑战", icon: "slider.horizontal.3")
+                    compactActionIcon("slider.horizontal.3", label: "修改挑战")
                 }
                 .buttonStyle(.plain)
 
                 Button(action: onToggle) {
-                    listActionLabel(
-                        alarm.isEnabled ? "取消闹钟" : "重新开启",
-                        icon: alarm.isEnabled ? "xmark.circle.fill" : "checkmark.circle.fill",
+                    compactActionIcon(
+                        alarm.isEnabled ? "bell.slash.fill" : "checkmark.circle.fill",
+                        label: alarm.isEnabled ? "取消闹钟" : "重新开启",
                         color: alarm.isEnabled ? Bedside.red : Bedside.green
                     )
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(16)
-        .background { LiquidGlassPanel(radius: 18, style: .card) }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 20)
+        .background { LiquidGlassPanel(radius: 20, style: .card) }
         .opacity(alarm.isEnabled ? 1 : 0.68)
     }
 
-    private func listActionLabel(_ title: String, icon: String, color: Color = Bedside.amber) -> some View {
-        Label(title, systemImage: icon)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(color)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
+    private var statusPill: some View {
+        Text(alarm.isEnabled ? "已开启" : "已关闭")
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(alarm.isEnabled ? Bedside.green : Bedside.dim)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
             .background(
                 Capsule(style: .continuous)
-                    .fill(color.opacity(0.11))
-                    .overlay(Capsule().stroke(color.opacity(0.18), lineWidth: 0.6))
+                    .fill((alarm.isEnabled ? Bedside.green : Bedside.dim).opacity(0.12))
+                    .overlay(Capsule().stroke((alarm.isEnabled ? Bedside.green : Bedside.dim).opacity(0.18), lineWidth: 0.6))
             )
+    }
+
+    private func compactActionIcon(_ icon: String, label: String, color: Color = Bedside.amber) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(color)
+            .frame(width: 36, height: 36)
+            .background(
+                Circle()
+                    .fill(color.opacity(0.12))
+                    .overlay(Circle().stroke(color.opacity(0.2), lineWidth: 0.7))
+            )
+            .accessibilityLabel(label)
     }
 }
 
