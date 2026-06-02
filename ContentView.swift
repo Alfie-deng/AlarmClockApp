@@ -280,16 +280,16 @@ private struct AddAlarmButton: View {
                         )
                     )
                     .overlay(Circle().stroke(Bedside.accent.opacity(0.28), lineWidth: 1))
-                    .shadow(color: Bedside.accent.opacity(0.28), radius: 18, x: 0, y: 8)
-                    .shadow(color: .black.opacity(0.42), radius: 14, x: 0, y: 12)
+                    .shadow(color: Bedside.accent.opacity(0.24), radius: 13, x: 0, y: 6)
+                    .shadow(color: .black.opacity(0.38), radius: 10, x: 0, y: 8)
 
                 Image(systemName: "plus")
-                    .font(.system(size: 30, weight: .black, design: .rounded))
+                    .font(.system(size: 34, weight: .black, design: .rounded))
                     .foregroundStyle(Bedside.amber)
                     .shadow(color: .black.opacity(0.72), radius: 2.5, x: 0, y: 2)
                     .shadow(color: Bedside.accent.opacity(0.72), radius: 7, x: 0, y: 0)
             }
-            .frame(width: 70, height: 70)
+            .frame(width: 58, height: 58)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
