@@ -213,8 +213,8 @@ private struct AlarmHeroCard: View {
     }
     private var dateText: String { alarm?.nextOccurrenceText() ?? "" }
     private var statusText: String { alarm?.isEnabled == true ? "已开启" : "未开启" }
-    private var challengeText: String { "\(alarm?.challengeType.rawValue ?? "数学题")挑战" }
-    private var challengeIcon: String { alarm?.challengeType.icon ?? ChallengeType.math.icon }
+    private var challengeText: String { "选择起床挑战" }
+    private var challengeIcon: String { "shield.checkered" }
     private var accessibilitySummary: String {
         [labelText, dateText, "\(timeText) \(periodText)", challengeText, statusText]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
