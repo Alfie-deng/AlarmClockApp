@@ -1,0 +1,276 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		27A5A8A604E963C20418A4A1B92C9593 /* AlarmManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73323B1429E6539766B1F56C77094BB /* AlarmManager.swift */; };
+		2B96CEF841E1EBDF4F6D757BFEA89E4D /* Alarm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2381152088608095C54EB56EF500EAEE /* Alarm.swift */; };
+		34429F1C2DC2A69846E5BE964902492F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71F417557CB270275815ED5E69ED172B /* Assets.xcassets */; };
+		3D6E78A12C63A214B886D8EEE98D28BE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE84C9DD571CD79775615DEB7FB26EEB /* ContentView.swift */; };
+		3D749AC23FB0CD2106785D916E90C49B /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1571A4F6D7A8AC630D25B94248800B7A /* DesignSystem.swift */; };
+		4C2C991BB7CD0FA061BA1172F5432891 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4294E237B1335D538FAB1B5BD33D9D90 /* StatsView.swift */; };
+		A891AF69B9F24B74544DEB50A301A9F8 /* AlarmSettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B93BA7D9103721159FA0F5EE77DE81C /* AlarmSettingView.swift */; };
+		AD5986027B9018CEBAC88A87C17A4B9E /* SuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92E3D85C214237853BF1B81CDC8E1567 /* SuccessView.swift */; };
+		AEAE69D8A92C0CA8178F7726588856E1 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33025D5371D8E13677C8204BC3998C5 /* HomeView.swift */; };
+		F15152B0C6E1030126AF8E6607651A57 /* RingingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7027A925336CC9E8DAF1DD9B168FD4 /* RingingView.swift */; };
+		FFF80DE2146A7FABAC704EE11F7B55B3 /* AlarmClockApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D29346D92E860540253EE7A138548AE8 /* AlarmClockApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0B93BA7D9103721159FA0F5EE77DE81C /* AlarmSettingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmSettingView.swift; sourceTree = "<group>"; };
+		1571A4F6D7A8AC630D25B94248800B7A /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		2381152088608095C54EB56EF500EAEE /* Alarm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alarm.swift; sourceTree = "<group>"; };
+		2F7027A925336CC9E8DAF1DD9B168FD4 /* RingingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingingView.swift; sourceTree = "<group>"; };
+		4294E237B1335D538FAB1B5BD33D9D90 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		71F417557CB270275815ED5E69ED172B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		92E3D85C214237853BF1B81CDC8E1567 /* SuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessView.swift; sourceTree = "<group>"; };
+		BE64FC288E96C7A8A1BD8786D4D26734 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BE84C9DD571CD79775615DEB7FB26EEB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C33025D5371D8E13677C8204BC3998C5 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		C948BB45613303677C69FB56D29B7B5F /* AlarmClockApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AlarmClockApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D29346D92E860540253EE7A138548AE8 /* AlarmClockApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmClockApp.swift; sourceTree = "<group>"; };
+		E73323B1429E6539766B1F56C77094BB /* AlarmManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmManager.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1DE00D96699118B41D6B4AB061B25164 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				E73323B1429E6539766B1F56C77094BB /* AlarmManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		2EA49B37134BAB4487B5457948B6FCE2 /* AlarmClockApp */ = {
+			isa = PBXGroup;
+			children = (
+				D29346D92E860540253EE7A138548AE8 /* AlarmClockApp.swift */,
+				71F417557CB270275815ED5E69ED172B /* Assets.xcassets */,
+				BE84C9DD571CD79775615DEB7FB26EEB /* ContentView.swift */,
+				BE64FC288E96C7A8A1BD8786D4D26734 /* Info.plist */,
+				EFFA84FA9F90A7A11BE965A7D3301D7F /* Components */,
+				83526234BB014E6635C31454B69BEC2A /* Models */,
+				1DE00D96699118B41D6B4AB061B25164 /* Services */,
+				3CD48960B2574318BE196E4925D72318 /* Views */,
+			);
+			name = AlarmClockApp;
+			path = /Users/alfie/Developer/AlarmClockApp;
+			sourceTree = "<group>";
+		};
+		3CD48960B2574318BE196E4925D72318 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				0B93BA7D9103721159FA0F5EE77DE81C /* AlarmSettingView.swift */,
+				C33025D5371D8E13677C8204BC3998C5 /* HomeView.swift */,
+				2F7027A925336CC9E8DAF1DD9B168FD4 /* RingingView.swift */,
+				4294E237B1335D538FAB1B5BD33D9D90 /* StatsView.swift */,
+				92E3D85C214237853BF1B81CDC8E1567 /* SuccessView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		45841BA34399852E7356CB294515F619 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C948BB45613303677C69FB56D29B7B5F /* AlarmClockApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		83526234BB014E6635C31454B69BEC2A /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				2381152088608095C54EB56EF500EAEE /* Alarm.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		B9BB51B25C47C02657D043454D1A8148 = {
+			isa = PBXGroup;
+			children = (
+				2EA49B37134BAB4487B5457948B6FCE2 /* AlarmClockApp */,
+				EFFA84FA9F90A7A11BE965A7D3301D7F /* Components */,
+				83526234BB014E6635C31454B69BEC2A /* Models */,
+				1DE00D96699118B41D6B4AB061B25164 /* Services */,
+				3CD48960B2574318BE196E4925D72318 /* Views */,
+				45841BA34399852E7356CB294515F619 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		EFFA84FA9F90A7A11BE965A7D3301D7F /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				1571A4F6D7A8AC630D25B94248800B7A /* DesignSystem.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3AA9D9A9BDA5886A66226CC3972F8DF7 /* AlarmClockApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB1D85D6ED2912F245A653DAF8A96916 /* Build configuration list for PBXNativeTarget "AlarmClockApp" */;
+			buildPhases = (
+				F85A4F961D558701326F96AFAE47C263 /* Sources */,
+				83D2C9286300720F9382B7F344A3B20A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AlarmClockApp;
+			productName = AlarmClockApp;
+			productReference = C948BB45613303677C69FB56D29B7B5F /* AlarmClockApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8BC8D8ACE47F2AD0E234F89BF0F9C861 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1000;
+				TargetAttributes = {
+					3AA9D9A9BDA5886A66226CC3972F8DF7 = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = 518D9F38EFA014C070BEA00BC15288BC /* Build configuration list for PBXProject "AlarmClockApp" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = B9BB51B25C47C02657D043454D1A8148;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3AA9D9A9BDA5886A66226CC3972F8DF7 /* AlarmClockApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		83D2C9286300720F9382B7F344A3B20A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34429F1C2DC2A69846E5BE964902492F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F85A4F961D558701326F96AFAE47C263 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2B96CEF841E1EBDF4F6D757BFEA89E4D /* Alarm.swift in Sources */,
+				FFF80DE2146A7FABAC704EE11F7B55B3 /* AlarmClockApp.swift in Sources */,
+				27A5A8A604E963C20418A4A1B92C9593 /* AlarmManager.swift in Sources */,
+				A891AF69B9F24B74544DEB50A301A9F8 /* AlarmSettingView.swift in Sources */,
+				3D6E78A12C63A214B886D8EEE98D28BE /* ContentView.swift in Sources */,
+				3D749AC23FB0CD2106785D916E90C49B /* DesignSystem.swift in Sources */,
+				AEAE69D8A92C0CA8178F7726588856E1 /* HomeView.swift in Sources */,
+				F15152B0C6E1030126AF8E6607651A57 /* RingingView.swift in Sources */,
+				4C2C991BB7CD0FA061BA1172F5432891 /* StatsView.swift in Sources */,
+				AD5986027B9018CEBAC88A87C17A4B9E /* SuccessView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		14C312912C4684E9B7D761AEA036FC7C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
+		58FCC249DB10A5D0B69DF7DBA56084BC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = AlarmClock;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alfie.AlarmClockApp;
+				PRODUCT_NAME = AlarmClockApp;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		5ED9D1FB0C07A7E7BD7331AFCED65C0B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		A15C4B64E6D0A16CEB13EF19E6E5EC75 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = AlarmClock;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alfie.AlarmClockApp;
+				PRODUCT_NAME = AlarmClockApp;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		518D9F38EFA014C070BEA00BC15288BC /* Build configuration list for PBXProject "AlarmClockApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5ED9D1FB0C07A7E7BD7331AFCED65C0B /* Debug */,
+				14C312912C4684E9B7D761AEA036FC7C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BB1D85D6ED2912F245A653DAF8A96916 /* Build configuration list for PBXNativeTarget "AlarmClockApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A15C4B64E6D0A16CEB13EF19E6E5EC75 /* Debug */,
+				58FCC249DB10A5D0B69DF7DBA56084BC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "";
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8BC8D8ACE47F2AD0E234F89BF0F9C861 /* Project object */;
+}

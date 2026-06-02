@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Build products
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# SwiftPM / tooling
+.build/
+.swiftpm/
+
+# Local secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.mobileprovision
+
+# Temporary files
+*.log
+tmp/
+temp/
