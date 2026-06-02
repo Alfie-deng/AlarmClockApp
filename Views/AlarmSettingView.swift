@@ -9,11 +9,9 @@ struct AlarmSettingView: View {
     @State private var min = 30
     @State private var label = "起床"
     @State private var soundName = "温柔晨光"
-    @State private var tag = "工作日"
     @State private var challenge: ChallengeType = .math
     @State private var mathDifficulty: MathDifficulty = .medium
     @State private var repeatDays: Set<Int> = []
-    @State private var isAlarmEnabled = true
     @State private var requiresChallenge = true
     
     var isEdit: Bool { alarm != nil }
@@ -83,7 +81,7 @@ struct AlarmSettingView: View {
                         }
                         .padding(.top, 4)
                         
-                        // 标签 & 重复
+                        // 基础设置
                         VStack(spacing: 0) {
                             editableRow(icon: "tag", title: "闹钟名称", text: $label)
                             Divider().background(Bedside.sep).padding(.leading, 56)
@@ -105,14 +103,6 @@ struct AlarmSettingView: View {
                             }
                             Divider().background(Bedside.sep).padding(.leading, 56)
                             PickerRow(icon: "speaker.wave.2", title: "闹钟声音", selection: $soundName, options: ["温柔晨光", "森林鸟鸣", "海边微风"])
-                            Divider().background(Bedside.sep).padding(.leading, 56)
-                            PickerRow(icon: "tag.fill", title: "标签", selection: $tag, options: ["工作日", "周末", "运动", "学习"])
-                            Divider().background(Bedside.sep).padding(.leading, 56)
-                            row(icon: "power", color: Bedside.accent, title: "启用闹钟") {
-                                Toggle("", isOn: $isAlarmEnabled)
-                                    .labelsHidden()
-                                    .tint(Bedside.accent)
-                            }
                             Divider().background(Bedside.sep).padding(.leading, 56)
                             row(icon: "shield.checkered", color: Bedside.accent, title: "起床挑战") {
                                 Toggle("", isOn: $requiresChallenge)
@@ -152,20 +142,6 @@ struct AlarmSettingView: View {
                                 .buttonStyle(.plain)
                             }
                             .padding(.vertical, 4)
-                            
-                            if !ChallengeType.betaCases.isEmpty {
-                                Divider().background(Bedside.sep).padding(.leading, 56)
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("未开放挑战")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(Bedside.subtext)
-                                    Text(ChallengeType.betaCases.map(\.rawValue).joined(separator: "、") + " 正在打磨中，先别拿它们赌早起。")
-                                        .font(.system(size: 13, weight: .medium))
-                                        .foregroundStyle(Bedside.dim)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(16)
-                            }
                             
                             if challenge == .math {
                                 Divider().background(Bedside.sep).padding(.leading, 56)
@@ -218,9 +194,7 @@ struct AlarmSettingView: View {
                 challenge = a.challengeType.isSupported ? a.challengeType : .math
                 mathDifficulty = a.mathDifficulty
                 soundName = a.soundName
-                tag = a.tag
                 repeatDays = a.repeatWeekdays
-                isAlarmEnabled = a.isEnabled
                 requiresChallenge = a.requiresChallenge
             }
         }
@@ -253,13 +227,13 @@ struct AlarmSettingView: View {
         let a = Alarm(
             id: alarm?.id ?? UUID(),
             time: time,
-            isEnabled: isAlarmEnabled,
+            isEnabled: alarm?.isEnabled ?? true,
             requiresChallenge: requiresChallenge,
             challengeType: challenge.isSupported ? challenge : .math,
             mathDifficulty: mathDifficulty,
             label: label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "起床" : label,
             soundName: soundName,
-            tag: tag,
+            tag: alarm?.tag ?? "工作日",
             repeatDays: repeatDays,
             snoozeMinutes: 5
         )
