@@ -365,7 +365,7 @@ private struct WakeCountdownBatteryCard: View {
                             .opacity(0.55)
 
                         Text(state.copy)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 14.5, weight: .bold))
                             .foregroundStyle(Bedside.text)
                             .shadow(color: .black.opacity(0.42), radius: 1.6, x: 0, y: 1)
                             .shadow(color: Bedside.accent.opacity(0.35), radius: 3.5, x: 0, y: 0)
