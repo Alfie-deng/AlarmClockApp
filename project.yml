@@ -10,12 +10,13 @@ targets:
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: .
-        excludes:
-          - "project.yml"
-          - "AlarmClockApp.xcodeproj"
-          - "*.xcworkspace"
-          - "Tests"
+      - AlarmClockApp.swift
+      - ContentView.swift
+      - Components
+      - Models
+      - Services
+      - Views
+      - Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alfie.AlarmClockApp
@@ -26,10 +27,11 @@ targets:
         ENABLE_TESTABILITY: YES
         SWIFT_OPTIMIZATION_LEVEL: "-Onone"
         TARGETED_DEVICE_FAMILY: "1"
-        CODE_SIGN_IDENTITY: ""
-        CODE_SIGNING_REQUIRED: NO
-        CODE_SIGNING_ALLOWED: NO
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: D4SUBHNYW9
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGNING_REQUIRED: YES
+        CODE_SIGNING_ALLOWED: YES
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: AlarmClock
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
