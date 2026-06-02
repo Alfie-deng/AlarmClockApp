@@ -5,6 +5,7 @@ struct HomeView: View {
     @EnvironmentObject var mgr: AlarmManager
     @State private var showAdd = false
     @State private var editAlarm: Alarm?
+    @State private var sleepCopySeed = Int.random(in: 0...10_000)
     
     private var next: Alarm? {
         mgr.alarms
@@ -43,6 +44,9 @@ struct HomeView: View {
             AlarmSettingView(alarm: alarm)
                 .presentationDetents([.large])
         }
+        .onAppear {
+            sleepCopySeed = Int.random(in: 0...10_000)
+        }
     }
     
     @ViewBuilder
@@ -71,8 +75,8 @@ struct HomeView: View {
                     }
                 }
             )
-            
-            BedtimeReminderCard(isEnabled: false)
+
+            WakeCountdownBatteryCard(alarm: next, copySeed: sleepCopySeed)
         }
     }
 }
@@ -186,7 +190,7 @@ private struct HeaderBar: View {
                 Text("🌙 起床挑战")
                     .font(.system(size: 25, weight: .bold))
                     .foregroundStyle(Bedside.text)
-                Text("挑战自己，开启美好一天")
+                Text("不完成挑战，别想关闹钟")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
             }
@@ -246,7 +250,7 @@ private struct AlarmHeroCard: View {
                 
                 HStack(alignment: .lastTextBaseline, spacing: 8) {
                     Text(timeText)
-                        .font(.system(size: 108, weight: .light, design: .rounded))
+                        .font(.system(size: 116, weight: .light, design: .rounded))
                         .monospacedDigit()
                         .minimumScaleFactor(0.62)
                         .glow(Bedside.amber)
@@ -254,7 +258,7 @@ private struct AlarmHeroCard: View {
                     Text(periodText)
                         .font(.system(size: 22, weight: .medium))
                         .foregroundStyle(Bedside.amber.opacity(0.86))
-                        .padding(.bottom, 18)
+                        .padding(.bottom, 20)
                 }
                 
                 VStack(alignment: .leading, spacing: 12) {
@@ -271,9 +275,10 @@ private struct AlarmHeroCard: View {
                         
                         if alarm != nil {
                             Button(action: onCancel) {
-                                heroPill("取消", icon: "moon.zzz.fill")
+                                heroPill("取消", icon: "bell.slash.fill")
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("取消闹钟")
                         }
                     }
                 }
@@ -282,7 +287,7 @@ private struct AlarmHeroCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 232)
+        .frame(height: 258)
         .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .onTapGesture(perform: onTap)
         .accessibilityElement(children: .combine)
@@ -301,6 +306,150 @@ private struct AlarmHeroCard: View {
                     .fill(Bedside.accent.opacity(0.14))
                     .overlay(Capsule().stroke(Bedside.accent.opacity(0.12), lineWidth: 0.6))
             )
+    }
+
+}
+
+private struct WakeCountdownBatteryCard: View {
+    let alarm: Alarm?
+    let copySeed: Int
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let state = batteryState(at: context.date)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("睡眠余额", systemImage: "moon.zzz.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Bedside.subtext)
+                    Spacer()
+                    Text(state.remainingText)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Bedside.amber)
+                }
+
+                GeometryReader { proxy in
+                    let fillWidth = max(22, proxy.size.width * state.progress)
+
+                    ZStack(alignment: .leading) {
+                        Capsule(style: .continuous)
+                            .fill(Color.black.opacity(0.28))
+                            .overlay(Capsule().stroke(Bedside.accent.opacity(0.24), lineWidth: 0.8))
+                            .shadow(color: Bedside.accent.opacity(0.12), radius: 10, x: 0, y: 0)
+
+                        Capsule(style: .continuous)
+                            .fill(Bedside.accent.opacity(0.26))
+                            .frame(width: fillWidth)
+                            .blur(radius: 10)
+                            .opacity(0.95)
+
+                        Capsule(style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Bedside.amber, Bedside.accent, Color(hex: "FF8D35")],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: fillWidth)
+                            .shadow(color: Bedside.accent.opacity(0.72), radius: 12, x: 0, y: 0)
+                            .shadow(color: Bedside.amber.opacity(0.36), radius: 22, x: 0, y: 0)
+
+                        Capsule(style: .continuous)
+                            .fill(.white.opacity(0.22))
+                            .frame(width: max(16, fillWidth * 0.72), height: 4)
+                            .offset(x: 12, y: -10)
+                            .blur(radius: 2)
+                            .opacity(0.55)
+
+                        Text(state.copy)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Bedside.text)
+                            .shadow(color: .black.opacity(0.42), radius: 1.6, x: 0, y: 1)
+                            .shadow(color: Bedside.accent.opacity(0.35), radius: 3.5, x: 0, y: 0)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                            .padding(.horizontal, 14)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                }
+                .frame(height: 40)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 16)
+            .background { LiquidGlassPanel(radius: 18, style: .card) }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private func batteryState(at date: Date) -> BatteryState {
+        guard let alarm else {
+            return BatteryState(
+                progress: 0.12,
+                remainingText: "未启用",
+                copy: pick(["没有启用闹钟，明天靠命运叫醒你？", "今天暂时没有处刑安排", "闹钟空着，人生开始自由落体"])
+            )
+        }
+
+        let target = alarm.nextOccurrence(after: date)
+        let seconds = max(0, target.timeIntervalSince(date))
+        let hours = seconds / 3600
+        let progress = min(max(seconds / (8 * 3600), 0.08), 1)
+        let remainingText = remainingText(seconds: seconds)
+
+        switch hours {
+        case 8...:
+            return BatteryState(progress: progress, remainingText: remainingText, copy: pick([
+                "时间还够，但别拿它当免死金牌",
+                "睡眠余额充足，别开始作妖",
+                "现在睡，明早像个人类"
+            ]))
+        case 6..<8:
+            return BatteryState(progress: progress, remainingText: remainingText, copy: pick([
+                "还来得及，别继续刷到灵魂出窍",
+                "黄金睡眠窗口正在关闭",
+                "现在上床，明天少恨自己一点"
+            ]))
+        case 4..<6:
+            return BatteryState(progress: progress, remainingText: remainingText, copy: pick([
+                "时间开始紧了，被窝在等你投降",
+                "再熬就不是晚睡，是主动削弱明天",
+                "睡吧，明早别和闹钟打官司"
+            ]))
+        case 2..<4:
+            return BatteryState(progress: progress, remainingText: remainingText, copy: pick([
+                "这点时间，睡了总比不睡强",
+                "明早会醒，但精神可能是散装的",
+                "赶紧睡，别把明天开局打成残血"
+            ]))
+        default:
+            return BatteryState(progress: progress, remainingText: remainingText, copy: pick([
+                "快到了，别指望睡眠医学救你",
+                "闹钟快开庭了，请准备出庭",
+                "现在闭眼，属于战术性昏迷"
+            ]))
+        }
+    }
+
+    private func pick(_ copies: [String]) -> String {
+        guard !copies.isEmpty else { return "" }
+        return copies[abs(copySeed) % copies.count]
+    }
+
+    private func remainingText(seconds: TimeInterval) -> String {
+        let totalMinutes = max(0, Int(seconds / 60))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 { return "还剩 \(hours)小时\(minutes)分" }
+        return "还剩 \(minutes)分"
+    }
+
+    private struct BatteryState {
+        let progress: Double
+        let remainingText: String
+        let copy: String
     }
 }
 
@@ -323,48 +472,6 @@ private struct NotificationWarningCard: View {
     }
 }
 
-private struct BedtimeReminderCard: View {
-    let isEnabled: Bool
-    
-    var body: some View {
-        ZStack {
-            LiquidGlassPanel(radius: 18, style: .card)
-                .allowsHitTesting(false)
-            
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Bedside.amber.opacity(0.14))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: "moon.stars.fill")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(Bedside.amber)
-                }
-                
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("就寝提醒")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Bedside.text)
-                    Text("后续接入")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Bedside.text.opacity(0.82))
-                    Text("当前版本先专注起床闹钟闭环")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(Bedside.subtext)
-                }
-                
-                Spacer()
-                
-                Toggle("", isOn: .constant(isEnabled))
-                    .labelsHidden()
-                    .tint(Bedside.accent)
-                    .scaleEffect(0.92)
-                    .disabled(true)
-            }
-            .padding(16)
-        }
-    }
-}
 
 private extension UNAuthorizationStatus {
     var isBlockingAlarmDelivery: Bool {

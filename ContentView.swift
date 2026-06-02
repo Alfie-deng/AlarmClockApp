@@ -185,7 +185,6 @@ private extension ChallengeType {
         case "math": return .math
         case "shake": return .shake
         case "speak": return .speak
-        case "photo": return .photo
         case "memory": return .memory
         default: return nil
         }

@@ -12,6 +12,13 @@ struct StatsView: View {
         var id: ChallengeType { type }
     }
 
+    private struct WakePersona {
+        let title: String
+        let subtitle: String
+        let detail: String
+        let symbol: String
+    }
+
     fileprivate struct WakeTimePoint: Identifiable {
         let id = UUID()
         let dayLabel: String
@@ -32,9 +39,10 @@ struct StatsView: View {
                 BedsideAmbientBackground()
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
-                        BedsideTopBar(title: "统计", subtitle: "起床结果、规律、挑战表现")
+                        BedsideTopBar(title: "起床人格")
                             .padding(.horizontal, -20)
 
+                        wakePersonaCard
                         resultSummaryCard
                         wakeRegularityCard
                         challengePerformanceCard
@@ -45,6 +53,29 @@ struct StatsView: View {
                 }
             }
         }
+    }
+
+
+    // MARK: - 起床人格
+    private var wakePersonaCard: some View {
+        let persona = wakePersona
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(persona.title)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(Bedside.amber)
+            Text(persona.subtitle)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Bedside.subtext)
+            Text(persona.detail)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Bedside.subtext)
+                .lineLimit(2)
+                .minimumScaleFactor(0.84)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 2)
+        .padding(.top, 2)
+        .padding(.bottom, 4)
     }
 
     // MARK: - 起床结果
@@ -73,7 +104,7 @@ struct StatsView: View {
                     Text("本周完成")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Bedside.subtext)
-                    Text("\(weekSuccessCount)/\(elapsedWeekDayCount)")
+                    Text("\(weekSuccessCount)/\(weekTargetDayCount)")
                         .font(.system(size: 30, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(Bedside.text)
@@ -120,7 +151,7 @@ struct StatsView: View {
     private var wakeRegularityCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("起床规律")
+                Text("起床节奏")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Bedside.text)
                 Text(wakeRegularitySubtitle)
@@ -180,37 +211,52 @@ struct StatsView: View {
     }
 
     private func challengeRow(_ item: ChallengeSummary) -> some View {
-        HStack(spacing: 8) {
-            Label(item.type.rawValue, systemImage: item.type.icon)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Bedside.text)
-                .frame(width: 66, alignment: .leading)
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: item.type.icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(item.count > 0 ? Bedside.accent : Bedside.dim)
+                        .frame(width: 20)
+                    Text(item.type.rawValue)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Bedside.text)
+                        .frame(width: 52, alignment: .leading)
+                }
 
-            Text("\(item.count)次")
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(item.count > 0 ? Bedside.accent : Bedside.dim)
-                .frame(width: 30, alignment: .leading)
+                Spacer(minLength: 8)
 
-            Text(item.averageDuration.map(durationText) ?? "暂无")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(Bedside.subtext)
-                .frame(width: 58, alignment: .leading)
+                Text("\(item.count) 次")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(item.count > 0 ? Bedside.accent : Bedside.dim)
+                    .frame(width: 48, alignment: .trailing)
+
+                Text(item.averageDuration.map(durationText) ?? "暂无")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Bedside.subtext)
+                    .frame(width: 68, alignment: .trailing)
+            }
 
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.055))
+                        .fill(Color.white.opacity(0.06))
                     Capsule(style: .continuous)
                         .fill(Bedside.accent)
-                        .frame(width: max(item.count > 0 ? 10 : 0, proxy.size.width * item.barRatio))
+                        .frame(width: max(item.count > 0 ? 14 : 0, proxy.size.width * item.barRatio))
                 }
             }
-            .frame(height: 7)
+            .frame(height: 8)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.035))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Bedside.sep.opacity(0.75), lineWidth: 0.7))
+        )
     }
 
     @ViewBuilder
@@ -230,6 +276,60 @@ struct StatsView: View {
     }
 
     // MARK: - Derived data
+    private var wakePersona: WakePersona {
+        if emergencySessions.count >= 3 {
+            return WakePersona(
+                title: "紧急关闭艺术家",
+                subtitle: "你和关闭按钮熟得像老同事",
+                detail: "紧急关闭 \(emergencySessions.count) 次，系统已开始怀疑你的清醒诚意。",
+                symbol: "exclamationmark.triangle.fill"
+            )
+        }
+
+        if currentStreak >= 5 {
+            return WakePersona(
+                title: "晨间战士",
+                subtitle: "闹钟响起，你负责执行",
+                detail: "当前连续 \(currentStreak) 天，已经不像人类，像早晨的纪律机器。",
+                symbol: "sunrise.fill"
+            )
+        }
+
+        if weekSuccessCount >= weekTargetDayCount, weekTargetDayCount >= 3 {
+            return WakePersona(
+                title: "准点人类",
+                subtitle: "本周目前没给被窝机会",
+                detail: "本周已发生日期全部完成，继续保持，别让周末出来捣乱。",
+                symbol: "checkmark.seal.fill"
+            )
+        }
+
+        if wakeVolatilityMinutes > 35 {
+            return WakePersona(
+                title: "作息游牧民",
+                subtitle: "你的起床时间正在四处迁徙",
+                detail: "近 7 日起床波动约 \(wakeVolatilityMinutes) 分钟，规律性还有救，但别拖成考古项目。",
+                symbol: "point.topleft.down.curvedto.point.bottomright.up"
+            )
+        }
+
+        if let mostUsed = challengeSummaries.max(by: { $0.count < $1.count }), mostUsed.count > 0 {
+            return WakePersona(
+                title: "\(mostUsed.type.rawValue)求生者",
+                subtitle: "最常靠它把自己从床上捞出来",
+                detail: "\(mostUsed.type.rawValue)已完成 \(mostUsed.count) 次，当前连续 \(currentStreak) 天。",
+                symbol: mostUsed.type.icon
+            )
+        }
+
+        return WakePersona(
+            title: "起床观察对象",
+            subtitle: "样本还少，系统先不下狠手",
+            detail: "完成几次挑战后，这里会给你一个更精准也更欠揍的称号。",
+            symbol: "person.crop.circle.badge.questionmark"
+        )
+    }
+
     private var currentStreak: Int {
         WakeSessionStats.currentStreak(sessions: completedSessions, endingOn: Date())
     }
@@ -242,44 +342,41 @@ struct StatsView: View {
         weekCompletedDays.count
     }
 
-    private var elapsedWeekDayCount: Int {
-        max(1, weekElapsedDays.count)
+    private var weekTargetDayCount: Int {
+        weekTargetDays.count
     }
 
     private var weekProgress: Double {
-        guard elapsedWeekDayCount > 0 else { return 0 }
-        return Double(weekSuccessCount) / Double(elapsedWeekDayCount)
+        guard weekTargetDayCount > 0 else { return 0 }
+        return min(Double(weekSuccessCount) / Double(weekTargetDayCount), 1)
     }
 
     private var weekRemainingText: String {
-        let remaining = max(0, 7 - elapsedWeekDayCount)
-        return remaining > 0 ? "剩余 \(remaining) 天" : "本周结束"
+        let remaining = max(0, weekTargetDayCount - weekSuccessCount)
+        return remaining > 0 ? "还差 \(remaining) 天" : "本周达标"
     }
 
-    private var weekElapsedDays: [Date] {
+    private var weekTargetDays: [Date] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         let weekday = calendar.component(.weekday, from: today)
         let startOffset = 2 - weekday
         let monday = calendar.date(byAdding: .day, value: startOffset, to: today) ?? today
-        return (0..<7).compactMap { offset in
-            guard let day = calendar.date(byAdding: .day, value: offset, to: monday), day <= today else { return nil }
-            return day
+        return (0..<5).compactMap { offset in
+            calendar.date(byAdding: .day, value: offset, to: monday)
         }
     }
 
     private var weekCompletedDays: Set<Date> {
         let calendar = Calendar.current
-        let elapsed = Set(weekElapsedDays)
-        return Set(completedSessions.map { calendar.startOfDay(for: $0.completedAt) }.filter { elapsed.contains($0) })
+        let targets = Set(weekTargetDays)
+        return Set(completedSessions.map { calendar.startOfDay(for: $0.completedAt) }.filter { targets.contains($0) })
     }
 
     private var wakeTimePoints: [WakeTimePoint] {
         let calendar = Calendar.current
         let symbols = ["日", "一", "二", "三", "四", "五", "六"]
-        let today = calendar.startOfDay(for: Date())
-        return (0..<7).compactMap { index in
-            guard let day = calendar.date(byAdding: .day, value: index - 6, to: today) else { return nil }
+        return weekTargetDays.map { day in
             let label = symbols[calendar.component(.weekday, from: day) - 1]
             let session = completedSessions
                 .filter { calendar.isDate($0.completedAt, inSameDayAs: day) }

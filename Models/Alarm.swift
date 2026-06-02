@@ -9,7 +9,7 @@ enum ChallengeType: String, CaseIterable, Identifiable, Codable {
     
     var id: String { rawValue }
     
-    static var supportedCases: [ChallengeType] { [.math, .shake, .speak, .photo] }
+    static var supportedCases: [ChallengeType] { [.math, .shake, .speak] }
     static var betaCases: [ChallengeType] { allCases.filter { !supportedCases.contains($0) } }
     
     var isSupported: Bool {
@@ -31,7 +31,7 @@ enum ChallengeType: String, CaseIterable, Identifiable, Codable {
         case .math: return "答对数学题才能关闹钟"
         case .shake: return "用力摇晃手机才能关闹钟"
         case .speak: return "念出指定语句才能关闹钟"
-        case .photo: return "拍摄指定物品才能关闹钟"
+        case .photo: return "拍照挑战暂不开放"
         case .memory: return "记住图案顺序才能关闹钟"
         }
     }
@@ -104,7 +104,8 @@ struct Alarm: Identifiable, Codable, Equatable {
         time = try container.decode(Date.self, forKey: .time)
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         requiresChallenge = try container.decodeIfPresent(Bool.self, forKey: .requiresChallenge) ?? true
-        challengeType = try container.decodeIfPresent(ChallengeType.self, forKey: .challengeType) ?? .math
+        let decodedChallenge = try container.decodeIfPresent(ChallengeType.self, forKey: .challengeType) ?? .math
+        challengeType = decodedChallenge.isSupported ? decodedChallenge : .math
         mathDifficulty = try container.decodeIfPresent(MathDifficulty.self, forKey: .mathDifficulty) ?? .medium
         label = try container.decodeIfPresent(String.self, forKey: .label) ?? "起床"
         soundName = try container.decodeIfPresent(String.self, forKey: .soundName) ?? "温柔晨光"

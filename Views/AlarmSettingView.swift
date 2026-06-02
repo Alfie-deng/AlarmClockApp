@@ -215,7 +215,7 @@ struct AlarmSettingView: View {
                 hour = c.hour ?? 7
                 min = c.minute ?? 30
                 label = a.label
-                challenge = a.challengeType
+                challenge = a.challengeType.isSupported ? a.challengeType : .math
                 mathDifficulty = a.mathDifficulty
                 soundName = a.soundName
                 tag = a.tag
@@ -255,7 +255,7 @@ struct AlarmSettingView: View {
             time: time,
             isEnabled: isAlarmEnabled,
             requiresChallenge: requiresChallenge,
-            challengeType: challenge,
+            challengeType: challenge.isSupported ? challenge : .math,
             mathDifficulty: mathDifficulty,
             label: label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "起床" : label,
             soundName: soundName,
