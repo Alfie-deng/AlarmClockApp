@@ -6,6 +6,8 @@ struct HomeView: View {
     @State private var showAdd = false
     @State private var editAlarm: Alarm?
     @State private var sleepCopySeed = Int.random(in: 0...10_000)
+    private let horizontalPadding: CGFloat = 28
+    private let contentMaxWidth: CGFloat = 384
     
     private var next: Alarm? {
         mgr.alarms
@@ -27,12 +29,16 @@ struct HomeView: View {
                         
                         glassCardStack
                     }
-                    .padding(.horizontal, 20)
+                    .frame(maxWidth: contentMaxWidth)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, horizontalPadding)
                     .padding(.bottom, 28)
                 }
                 
                 HeaderBar()
-                    .padding(.horizontal, 20)
+                    .frame(maxWidth: contentMaxWidth)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, horizontalPadding)
                     .padding(.top, 28)
             }
         }
@@ -82,11 +88,14 @@ struct HomeView: View {
 }
 
 private struct BedroomBackdrop: View {
+    private let imageOffset = CGSize(width: -24, height: -44)
+
     var body: some View {
         ZStack(alignment: .top) {
             Image("BedsideLampBackground")
                 .resizable()
                 .scaledToFill()
+                .offset(imageOffset)
                 .overlay(
                     LinearGradient(
                         colors: [
@@ -131,7 +140,7 @@ private struct BedroomBackdrop: View {
                         )
                         .frame(width: 300, height: 150)
                         .blur(radius: 30)
-                        .offset(x: width * 0.22, y: top + 210)
+                        .offset(x: width * 0.22 + imageOffset.width, y: top + 210 + imageOffset.height)
                     
                     BedroomVignette()
                 }
@@ -188,10 +197,10 @@ private struct HeaderBar: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("🌙 起床挑战")
-                    .font(.system(size: 25, weight: .bold))
+                    .font(.system(size: 27, weight: .bold))
                     .foregroundStyle(Bedside.text)
                 Text("不完成挑战，别想关闹钟")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
             }
             
@@ -331,7 +340,7 @@ private struct WakeCountdownBatteryCard: View {
                 }
 
                 GeometryReader { proxy in
-                    let fillWidth = max(22, proxy.size.width * state.progress)
+                    let fillWidth = state.progress > 0 ? max(22, proxy.size.width * state.progress) : 0
 
                     ZStack(alignment: .leading) {
                         Capsule(style: .continuous)
@@ -362,7 +371,7 @@ private struct WakeCountdownBatteryCard: View {
                             .frame(width: max(16, fillWidth * 0.72), height: 4)
                             .offset(x: 12, y: -14)
                             .blur(radius: 2)
-                            .opacity(0.55)
+                            .opacity(state.progress > 0 ? 0.55 : 0)
 
                         Text(state.copy)
                             .font(.system(size: 14.5, weight: .bold))
@@ -387,7 +396,7 @@ private struct WakeCountdownBatteryCard: View {
     private func batteryState(at date: Date) -> BatteryState {
         guard let alarm else {
             return BatteryState(
-                progress: 0.12,
+                progress: 0,
                 remainingText: "未启用",
                 copy: pick(["没有启用闹钟，明天靠命运叫醒你？", "今天暂时没有处刑安排", "闹钟空着，人生开始自由落体"])
             )

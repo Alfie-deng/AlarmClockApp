@@ -140,47 +140,74 @@ struct ContentView: View {
     private var appShell: some View {
         ZStack {
             Bedside.bg.ignoresSafeArea()
-            VStack(spacing: 0) {
-                TabView(selection: $tab) {
-                    HomeView().tag(0)
-                    AlarmTabView().tag(1)
-                    StatsView().tag(2)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .disabled(true)
+            currentTabView
 
-                HStack(spacing: 0) {
-                    tabBtn(index: 0, icon: "house.fill", label: "首页")
-                    tabBtn(index: 1, icon: "alarm", label: "闹钟")
-                    tabBtn(index: 2, icon: "chart.bar.fill", label: "统计")
-                }
-                .padding(.top, 9)
-                .padding(.bottom, 34)
-                .background {
-                    Rectangle()
-                        .fill(Bedside.bg.opacity(0.86))
-                        .overlay(Rectangle().frame(height: 0.5).foregroundColor(Bedside.sep), alignment: .top)
-                }
+            VStack {
+                Spacer()
+                GlassTabBar(tab: $tab)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 17)
             }
+            .ignoresSafeArea(.keyboard)
         }
     }
 
+    @ViewBuilder
+    private var currentTabView: some View {
+        switch tab {
+        case 0: HomeView()
+        case 1: AlarmTabView()
+        default: StatsView()
+        }
+    }
+
+}
+
+private struct GlassTabBar: View {
+    @Binding var tab: Int
+
+    var body: some View {
+        HStack(spacing: 8) {
+            tabBtn(index: 0, icon: "house.fill", label: "首页")
+            tabBtn(index: 1, icon: "alarm.fill", label: "闹钟")
+            tabBtn(index: 2, icon: "chart.bar.fill", label: "统计")
+        }
+        .padding(6)
+        .frame(height: 70)
+        .background { LiquidGlassCapsule(style: .hero, interactive: true) }
+        .shadow(color: .black.opacity(0.42), radius: 20, x: 0, y: 12)
+        .shadow(color: Bedside.accent.opacity(0.12), radius: 18, x: 0, y: 4)
+    }
+
     private func tabBtn(index: Int, icon: String, label: String) -> some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.18)) {
+        let selected = tab == index
+
+        return Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 tab = index
             }
         } label: {
             VStack(spacing: 4) {
-                Image(systemName: icon).font(.system(size: 20, weight: tab == index ? .semibold : .regular))
-                Text(label).font(.system(size: 10, weight: tab == index ? .semibold : .regular))
+                Image(systemName: icon)
+                    .font(.system(size: 21, weight: selected ? .semibold : .regular))
+                Text(label)
+                    .font(.system(size: 11, weight: selected ? .semibold : .medium))
             }
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(tab == index ? Bedside.accent : Bedside.dim)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .foregroundStyle(selected ? Bedside.amber : Bedside.text.opacity(0.78))
+            .background {
+                if selected {
+                    Capsule(style: .continuous)
+                        .fill(Bedside.amber.opacity(0.15))
+                        .overlay(Capsule(style: .continuous).stroke(Bedside.amber.opacity(0.23), lineWidth: 0.7))
+                }
+            }
+            .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
-
 }
 
 private extension ChallengeType {
@@ -205,32 +232,48 @@ private struct AlarmTabView: View {
             ZStack {
                 BedsideAmbientBackground()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 18) {
-                        BedsideTopBar(title: "闹钟", subtitle: "管理你的起床挑战")
-                            .padding(.horizontal, -20)
+                List {
+                    Section {
+                        AlarmListHeader(onAdd: { showAddAlarm = true })
                             .padding(.top, 8)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
 
-                        if mgr.alarms.isEmpty {
+                    if mgr.alarms.isEmpty {
+                        Section {
                             AlarmEmptyCard(onAdd: { showAddAlarm = true })
-                        } else {
-                            VStack(spacing: 14) {
-                                ForEach(mgr.alarms) { alarm in
-                                    SwipeToDeleteAlarmRow(onDelete: { mgr.deleteAlarm(alarm) }) {
-                                        AlarmListCard(
-                                            alarm: alarm,
-                                            onEdit: { editAlarm = alarm },
-                                            onToggle: { mgr.toggleAlarm(alarm) }
-                                        )
+                                .listRowInsets(EdgeInsets(top: 18, leading: 20, bottom: 0, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        }
+                    } else {
+                        Section {
+                            ForEach(mgr.alarms) { alarm in
+                                AlarmListCard(
+                                    alarm: alarm,
+                                    onEdit: { editAlarm = alarm },
+                                    onToggle: { mgr.toggleAlarm(alarm) }
+                                )
+                                .listRowInsets(EdgeInsets(top: 7, leading: 20, bottom: 7, trailing: 20))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        mgr.deleteAlarm(alarm)
+                                    } label: {
+                                        Label("删除", systemImage: "trash")
                                     }
                                 }
-
-                                AddAlarmButton(action: { showAddAlarm = true })
                             }
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 100)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .safeAreaInset(edge: .bottom) {
+                    Color.clear.frame(height: 104)
                 }
             }
         }
@@ -242,6 +285,37 @@ private struct AlarmTabView: View {
             AlarmSettingView()
                 .presentationDetents([.large])
         }
+    }
+}
+
+private struct AlarmListHeader: View {
+    let onAdd: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text("闹钟")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(Bedside.text)
+                Text("管理你的起床挑战")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
+            }
+
+            Spacer()
+
+            Button(action: onAdd) {
+                Image(systemName: "plus")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(Bedside.amber)
+                    .frame(width: 54, height: 54)
+                    .background { LiquidGlassCapsule(style: .card, interactive: true) }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("新增闹钟")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 12)
     }
 }
 
@@ -303,153 +377,143 @@ private struct AddAlarmButton: View {
     }
 }
 
-private struct SwipeToDeleteAlarmRow<Content: View>: View {
-    let onDelete: () -> Void
-    @ViewBuilder let content: Content
-    @State private var offset: CGFloat = 0
-
-    private let revealWidth: CGFloat = 82
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            Button {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-                    offset = 0
-                }
-                onDelete()
-            } label: {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Bedside.red.opacity(0.88))
-                        .shadow(color: Bedside.red.opacity(0.28), radius: 16, x: 0, y: 8)
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 23, weight: .bold))
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.45), radius: 2, x: 0, y: 1)
-                }
-                .frame(width: revealWidth)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("删除闹钟")
-
-            content
-                .offset(x: offset)
-                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .gesture(
-                    DragGesture(minimumDistance: 12, coordinateSpace: .local)
-                        .onChanged { value in
-                            let horizontal = value.translation.width
-                            guard abs(horizontal) > abs(value.translation.height) else { return }
-                            if horizontal < 0 {
-                                offset = max(horizontal, -revealWidth)
-                            } else {
-                                offset = min(0, -revealWidth + horizontal)
-                            }
-                        }
-                        .onEnded { value in
-                            let shouldReveal = value.translation.width < -revealWidth * 0.42 || value.predictedEndTranslation.width < -revealWidth
-                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                                offset = shouldReveal ? -revealWidth : 0
-                            }
-                        }
-                )
-        }
-        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: offset)
-    }
-}
-
 private struct AlarmListCard: View {
     let alarm: Alarm
     let onEdit: () -> Void
     let onToggle: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 14) {
-                BedsideIconBadge(systemName: alarm.isEnabled ? "alarm.fill" : "alarm")
-                    .opacity(alarm.isEnabled ? 1 : 0.5)
-                    .padding(.top, 4)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .lastTextBaseline, spacing: 7) {
-                        Text(alarm.formattedTime)
-                            .font(.system(size: 43, weight: .light, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(alarm.isEnabled ? Bedside.amber : Bedside.dim)
-                        Text(alarm.formattedPeriod)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(alarm.isEnabled ? Bedside.amber.opacity(0.74) : Bedside.dim)
-                            .padding(.bottom, 8)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .lastTextBaseline, spacing: 8) {
+                        timeText
+                        periodText
                     }
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(alarm.label)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(alarm.isEnabled ? Bedside.text.opacity(0.9) : Bedside.dim)
-                            .lineLimit(1)
-                        Text(alarm.nextOccurrenceText())
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Bedside.subtext)
-                    }
+                    .fixedSize(horizontal: true, vertical: false)
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                statusPill
-                    .padding(.top, 6)
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text(alarm.label)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(alarm.isEnabled ? Bedside.text.opacity(0.92) : Bedside.dim)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                    Text(alarm.nextOccurrenceText())
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(alarm.isEnabled ? Bedside.subtext : Bedside.dim)
+                        .lineLimit(1)
+                }
+                .padding(.top, 8)
             }
 
-            HStack(alignment: .center, spacing: 10) {
-                BedsidePill(text: "起床挑战 · \(alarm.challengeType.rawValue)", icon: alarm.challengeType.icon)
-                    .opacity(alarm.isEnabled ? 1 : 0.58)
+            HStack(alignment: .center, spacing: 8) {
+                ChallengeStatusLine(title: alarm.challengeType.rawValue, icon: alarm.challengeType.icon)
+                    .opacity(alarm.isEnabled ? 1 : 0.55)
 
                 Spacer(minLength: 8)
 
                 Button(action: onEdit) {
-                    compactActionIcon("slider.horizontal.3", label: "修改挑战")
+                    AlarmEditPill()
                 }
                 .buttonStyle(.plain)
 
-                Button(action: onToggle) {
-                    compactActionIcon(
-                        alarm.isEnabled ? "bell.slash.fill" : "checkmark.circle.fill",
-                        label: alarm.isEnabled ? "取消闹钟" : "重新开启",
-                        color: alarm.isEnabled ? Bedside.red : Bedside.green
-                    )
-                }
-                .buttonStyle(.plain)
+                AlarmPowerPill(isEnabled: alarm.isEnabled, action: onToggle)
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 20)
-        .background { LiquidGlassPanel(radius: 20, style: .card) }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 15)
+        .background { LiquidGlassPanel(radius: 19, style: .card) }
         .opacity(alarm.isEnabled ? 1 : 0.68)
     }
 
-    private var statusPill: some View {
-        Text(alarm.isEnabled ? "已开启" : "已关闭")
-            .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(alarm.isEnabled ? Bedside.green : Bedside.dim)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                Capsule(style: .continuous)
-                    .fill((alarm.isEnabled ? Bedside.green : Bedside.dim).opacity(0.12))
-                    .overlay(Capsule().stroke((alarm.isEnabled ? Bedside.green : Bedside.dim).opacity(0.18), lineWidth: 0.6))
-            )
+    private var timeText: some View {
+        Text(alarm.formattedTime)
+            .font(.system(size: 52, weight: .light, design: .rounded))
+            .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(alarm.isEnabled ? Bedside.text : Bedside.dim)
     }
 
-    private func compactActionIcon(_ icon: String, label: String, color: Color = Bedside.amber) -> some View {
-        Image(systemName: icon)
-            .font(.system(size: 15, weight: .bold))
-            .foregroundStyle(color)
-            .frame(width: 36, height: 36)
-            .background(
-                Circle()
-                    .fill(color.opacity(0.12))
-                    .overlay(Circle().stroke(color.opacity(0.2), lineWidth: 0.7))
-            )
-            .accessibilityLabel(label)
+    private var periodText: some View {
+        Text(alarm.formattedPeriod)
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(alarm.isEnabled ? Bedside.subtext : Bedside.dim)
+            .padding(.bottom, 10)
+    }
+}
+
+private struct AlarmPowerPill: View {
+    let isEnabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: isEnabled ? "power.circle.fill" : "power.circle")
+                    .font(.system(size: 13, weight: .bold))
+                Text(isEnabled ? "开启" : "关闭")
+                    .font(.system(size: 12, weight: .bold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(isEnabled ? Bedside.amber : Bedside.dim)
+            .frame(width: 78, height: 30)
+            .background {
+                Capsule(style: .continuous)
+                    .fill((isEnabled ? Bedside.accent : Bedside.dim).opacity(isEnabled ? 0.14 : 0.10))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke((isEnabled ? Bedside.amber : Bedside.dim).opacity(isEnabled ? 0.22 : 0.18), lineWidth: 0.7)
+                    )
+            }
+            .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isEnabled ? "关闭闹钟" : "开启闹钟")
+    }
+}
+
+private struct ChallengeStatusLine: View {
+    let title: String
+    let icon: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .frame(width: 15, alignment: .center)
+            Text("挑战 · \(title)")
+                .font(.system(size: 13, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.86)
+        }
+        .foregroundStyle(Bedside.amber.opacity(0.92))
+        .frame(height: 30)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("当前挑战：\(title)")
+        .accessibilityAddTraits(.isStaticText)
+    }
+}
+
+private struct AlarmEditPill: View {
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 12, weight: .bold))
+            Text("修改")
+                .font(.system(size: 12, weight: .bold))
+        }
+        .foregroundStyle(Bedside.amber)
+        .frame(minWidth: 66)
+        .frame(height: 30)
+        .padding(.horizontal, 8)
+        .background { LiquidGlassCapsule(style: .card, interactive: true) }
+        .accessibilityLabel("修改闹钟")
     }
 }
 

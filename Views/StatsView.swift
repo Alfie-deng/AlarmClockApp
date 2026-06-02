@@ -38,241 +38,207 @@ struct StatsView: View {
             ZStack {
                 BedsideAmbientBackground()
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
-                        BedsideTopBar(title: "起床人格")
-                            .padding(.horizontal, -20)
-
-                        wakePersonaCard
-                        resultSummaryCard
-                        wakeRegularityCard
-                        challengePerformanceCard
+                    VStack(spacing: 16) {
+                        statsHeader
+                        battleHeroCard
+                        wakeRhythmReportCard
+                        challengeRankCard
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 0)
-                    .padding(.bottom, 84)
+                    .padding(.top, 14)
+                    .padding(.bottom, 116)
                 }
             }
         }
     }
 
+    // MARK: - 战报版
+    private var statsHeader: some View {
+        Text("起床挑战报告")
+            .font(.system(size: 32, weight: .bold))
+            .foregroundStyle(Bedside.text)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 6)
+    }
 
-    // MARK: - 起床人格
-    private var wakePersonaCard: some View {
+    private var battleHeroCard: some View {
         let persona = wakePersona
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(persona.title)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(Bedside.amber)
-            Text(persona.subtitle)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Bedside.subtext)
+
+        return VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: persona.symbol)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Bedside.amber)
+                            .frame(width: 24, height: 24)
+                        Text("起床人格")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(Bedside.amber)
+                    }
+
+                    Text(persona.title)
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(Bedside.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+
+                    Text(persona.subtitle)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Bedside.subtext)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text("\(currentStreak)")
+                        .font(.system(size: 70, weight: .light, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Bedside.amber)
+                        .shadow(color: Bedside.accent.opacity(0.34), radius: 16)
+                    Text("连续挑战")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Bedside.subtext)
+                        .offset(y: -6)
+                }
+            }
+
             Text(persona.detail)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Bedside.subtext)
                 .lineLimit(2)
                 .minimumScaleFactor(0.84)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 2)
-        .padding(.top, 2)
-        .padding(.bottom, 4)
-    }
 
-    // MARK: - 起床结果
-    private var resultSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("当前连续")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Bedside.subtext)
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("\(currentStreak)")
-                            .font(.system(size: 64, weight: .light, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(Bedside.amber)
-                            .shadow(color: Bedside.accent.opacity(0.28), radius: 12)
-                        Text("天")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Bedside.subtext)
-                    }
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text("本周完成")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Bedside.subtext)
-                    Text("\(weekSuccessCount)/\(weekTargetDayCount)")
-                        .font(.system(size: 30, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(Bedside.text)
-                    Text(weekRemainingText)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Bedside.dim)
-                }
-            }
-
-            ProgressView(value: weekProgress)
-                .tint(Bedside.accent)
-                .scaleEffect(x: 1, y: 1.22, anchor: .center)
-
-            HStack(spacing: 8) {
-                compactMetric(title: "紧急关闭", value: "\(emergencySessions.count) 次")
-                compactMetric(title: "最长连续", value: "\(bestStreak) 天")
+            HStack(spacing: 9) {
+                reportBadge(title: "本周完成", value: "\(weekSuccessCount)/\(weekTargetDayCount)")
+                reportBadge(title: "最佳纪录", value: "\(bestStreak) 天")
+                reportBadge(title: "紧急关闭", value: "\(emergencySessions.count) 次")
             }
         }
         .padding(18)
-        .background { statsFlatPanel(radius: 24, highlighted: true) }
+        .background { LiquidGlassPanel(radius: 24, style: .hero) }
     }
 
-    private func compactMetric(title: String, value: String) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Bedside.dim)
-            Spacer(minLength: 4)
-            Text(value)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(Bedside.text)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.045))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Bedside.sep, lineWidth: 0.7))
-        )
-    }
-
-    // MARK: - 起床规律
-    private var wakeRegularityCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var wakeRhythmReportCard: some View {
+        VStack(alignment: .leading, spacing: 13) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("起床节奏")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Bedside.text)
                 Text(wakeRegularitySubtitle)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
             }
 
             WakeTimeLineChart(points: wakeTimePoints)
-                .frame(height: 78)
+                .frame(height: 86)
 
             HStack(spacing: 8) {
-                regularityPill(text: wakeVolatilityText)
-                regularityPill(text: wakeStabilityText)
+                reportBadge(title: "波动", value: wakeVolatilityText.replacingOccurrences(of: "波动 ", with: ""))
+                reportBadge(title: "稳定度", value: wakeStabilityText.replacingOccurrences(of: "稳定度：", with: ""))
             }
         }
         .padding(16)
-        .background { statsFlatPanel(radius: 22) }
+        .background { LiquidGlassPanel(radius: 22, style: .card) }
     }
 
-    private func regularityPill(text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(Bedside.subtext)
-            .lineLimit(1)
-            .minimumScaleFactor(0.78)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.045))
-                    .overlay(Capsule().stroke(Bedside.sep, lineWidth: 0.7))
-            )
-    }
-
-    // MARK: - 挑战表现
-    private var challengePerformanceCard: some View {
-        VStack(alignment: .leading, spacing: 11) {
+    private var challengeRankCard: some View {
+        VStack(alignment: .leading, spacing: 13) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("挑战表现")
-                    .font(.system(size: 17, weight: .semibold))
+                Text("挑战排行")
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Bedside.text)
-                Text("不同挑战的使用次数和平均完成时间")
+                Text("\(fastestChallengeText) · \(mostUsedChallengeText)")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
 
-            VStack(spacing: 8) {
+            VStack(spacing: 9) {
                 ForEach(challengeSummaries) { item in
-                    challengeRow(item)
+                    challengeBattleRow(item)
                 }
             }
-
-            regularityPill(text: "\(fastestChallengeText) · \(mostUsedChallengeText)")
         }
         .padding(16)
-        .background { statsFlatPanel(radius: 22) }
+        .background { LiquidGlassPanel(radius: 22, style: .card) }
     }
 
-    private func challengeRow(_ item: ChallengeSummary) -> some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: item.type.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(item.count > 0 ? Bedside.accent : Bedside.dim)
-                        .frame(width: 20)
+    private func challengeBattleRow(_ item: ChallengeSummary) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: item.type.icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(item.count > 0 ? Bedside.amber : Bedside.dim)
+                .frame(width: 34, height: 34)
+                .background(
+                    Circle()
+                        .fill((item.count > 0 ? Bedside.accent : Bedside.dim).opacity(0.12))
+                        .overlay(Circle().stroke((item.count > 0 ? Bedside.amber : Bedside.dim).opacity(0.18), lineWidth: 0.7))
+                )
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
                     Text(item.type.rawValue)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Bedside.text)
-                        .frame(width: 52, alignment: .leading)
+                    Spacer()
+                    Text("\(item.count) 次")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(item.count > 0 ? Bedside.amber : Bedside.dim)
+                    Text(item.averageDuration.map(durationText) ?? "暂无")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Bedside.subtext)
+                        .frame(width: 58, alignment: .trailing)
                 }
 
-                Spacer(minLength: 8)
-
-                Text("\(item.count) 次")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(item.count > 0 ? Bedside.accent : Bedside.dim)
-                    .frame(width: 48, alignment: .trailing)
-
-                Text(item.averageDuration.map(durationText) ?? "暂无")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(Bedside.subtext)
-                    .frame(width: 68, alignment: .trailing)
-            }
-
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.06))
-                    Capsule(style: .continuous)
-                        .fill(Bedside.accent)
-                        .frame(width: max(item.count > 0 ? 14 : 0, proxy.size.width * item.barRatio))
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.055))
+                        Capsule(style: .continuous)
+                            .fill(Bedside.accent.opacity(item.count > 0 ? 0.92 : 0))
+                            .frame(width: max(item.count > 0 ? 14 : 0, proxy.size.width * item.barRatio))
+                    }
                 }
+                .frame(height: 7)
             }
-            .frame(height: 8)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
                 .fill(Color.white.opacity(0.035))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Bedside.sep.opacity(0.75), lineWidth: 0.7))
+                .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(Bedside.sep.opacity(0.72), lineWidth: 0.7))
         )
     }
 
-    @ViewBuilder
-    private func statsFlatPanel(radius: CGFloat, highlighted: Bool = false) -> some View {
-        RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [Color(hex: "121923").opacity(0.86), Color(hex: "111014").opacity(0.78)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(Bedside.accent.opacity(highlighted ? 0.95 : 0.58), lineWidth: highlighted ? 0.9 : 0.72)
-            )
+    private func reportBadge(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Bedside.dim)
+                .lineLimit(1)
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Bedside.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(Color.white.opacity(0.045))
+                .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Bedside.sep.opacity(0.78), lineWidth: 0.7))
+        )
     }
 
     // MARK: - Derived data
