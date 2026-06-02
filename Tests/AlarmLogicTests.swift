@@ -38,12 +38,21 @@ final class AlarmLogicTests: XCTestCase {
         XCTAssertEqual(Alarm.normalizedRepeatWeekdays(from: [0, 6]), [2, 1])
     }
     
-    func testSupportedChallengeCasesOnlyExposeMathForNow() {
-        XCTAssertEqual(ChallengeType.supportedCases, [.math, .shake])
+    func testSupportedChallengeCasesExposeRealImplementedModes() {
+        XCTAssertEqual(ChallengeType.supportedCases, [.math, .shake, .speak])
         XCTAssertFalse(ChallengeType.betaCases.contains(.shake))
-        XCTAssertTrue(ChallengeType.betaCases.contains(.speak))
+        XCTAssertFalse(ChallengeType.betaCases.contains(.speak))
         XCTAssertTrue(ChallengeType.betaCases.contains(.photo))
         XCTAssertTrue(ChallengeType.betaCases.contains(.memory))
+    }
+    
+    func testSpeechPhraseMatcherNormalizesPunctuationAndAcceptsClosePhrase() {
+        let matcher = SpeechPhraseMatcher(targetPhrase: "我已经醒了，今天也要准时开始")
+        
+        XCTAssertTrue(matcher.matches("我已经醒了 今天也要准时开始"))
+        XCTAssertTrue(matcher.matches("我已经醒了今天也要准时开始。"))
+        XCTAssertGreaterThan(matcher.similarityScore(for: "我已经醒了今天也要准时开始"), 0.9)
+        XCTAssertFalse(matcher.matches("我还想睡觉 明天再说"))
     }
     
     func testShakeTrackerRequiresThresholdAndCooldown() throws {

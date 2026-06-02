@@ -32,7 +32,8 @@ xcodegen generate
 - Challenge types:
   - Math: supported
   - Shake: supported with CoreMotion on device and a simulator mock button
-  - Speak / Photo / Memory game: not opened yet
+  - Speak: supported with Speech recognition and a simulator mock button
+  - Photo / Memory game: not opened yet
 - Math challenge supports a 3-question flow.
 - Completed challenges create wake session records.
 - Success screen records mood/note feedback.
@@ -49,6 +50,8 @@ xcodegen generate
 --showChallenge --showChallengeType photo
 --showChallenge --showChallengeType memory
 --debugShakeRequiredCount 3
+--debugSpeechMock
+--debugSpeechNoAutoStart
 --showNoChallenge
 --debugScheduleWeekdays
 --debugTriggerStoredAlarm

@@ -9,7 +9,7 @@ enum ChallengeType: String, CaseIterable, Identifiable, Codable {
     
     var id: String { rawValue }
     
-    static var supportedCases: [ChallengeType] { [.math, .shake] }
+    static var supportedCases: [ChallengeType] { [.math, .shake, .speak] }
     static var betaCases: [ChallengeType] { allCases.filter { !supportedCases.contains($0) } }
     
     var isSupported: Bool {

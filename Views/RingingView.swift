@@ -96,6 +96,7 @@ struct RingingView: View {
     @State private var questionIndex = 0
     @State private var memoryInput: [Int] = []
     @StateObject private var shakeController = ShakeChallengeController(requiredCount: RingingView.debugShakeRequiredCount)
+    @StateObject private var speechController = SpeechChallengeController()
     
     private var time: String {
         let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: Date())
@@ -108,6 +109,10 @@ struct RingingView: View {
             return 20
         }
         return max(1, count)
+    }
+    
+    private static var debugSpeechNoAutoStart: Bool {
+        ProcessInfo.processInfo.arguments.contains("--debugSpeechNoAutoStart")
     }
     
     var body: some View {
@@ -160,7 +165,8 @@ struct RingingView: View {
             switch record.type {
             case .math: mathCard
             case .shake: shakeCard
-            case .speak, .photo, .memory: unavailableCard
+            case .speak: speakCard
+            case .photo, .memory: unavailableCard
             }
         }
     }
@@ -437,26 +443,97 @@ struct RingingView: View {
     
     // MARK: - 语音挑战
     private var speakCard: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "waveform")
-                .font(.system(size: 48)).foregroundColor(Bedside.accent)
-            Text("说出以下话语")
-                .font(.system(size: 16)).foregroundColor(Bedside.subtext)
-            Text("\"\(record.phrase ?? "")\"")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(Bedside.text).multilineTextAlignment(.center)
-                .padding(.horizontal, 16).padding(.vertical, 12)
-                .background(Bedside.surface, in: RoundedRectangle(cornerRadius: 12))
-            Button("我已念完") { onCorrect() }
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.82))
-                .padding(.horizontal, 22)
-                .padding(.vertical, 12)
-                .background(Capsule(style: .continuous).fill(Bedside.accent))
+        let phrase = record.phrase ?? "我已经醒了，今天也要准时开始"
+        return VStack(spacing: 20) {
+            HStack(alignment: .center, spacing: 12) {
+                BedsideIconBadge(systemName: "waveform")
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("念语句挑战")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Bedside.text)
+                    Text(speechController.state.message)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Bedside.subtext)
+                }
+                Spacer()
+                Image(systemName: speechController.state == .matched ? "checkmark.circle.fill" : "mic.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(speechController.state == .matched ? Bedside.green : Bedside.amber)
+                    .symbolEffect(.pulse, options: .repeating, value: speechController.transcript)
+            }
+            
+            VStack(spacing: 10) {
+                Text("请清楚念出")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Bedside.subtext)
+                    .textCase(.uppercase)
+                    .tracking(1.2)
+                Text("“\(phrase)”")
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundColor(Bedside.text)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.black.opacity(0.22))
+                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Bedside.accent.opacity(0.22), lineWidth: 0.8))
+                    )
+            }
+            
+            VStack(alignment: .leading, spacing: 9) {
+                HStack {
+                    Text("识别内容")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Bedside.subtext)
+                    Spacer()
+                    Text("匹配度 \(Int(speechController.similarity * 100))%")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Bedside.amber)
+                }
+                Text(speechController.transcript.isEmpty ? "等待麦克风输入…" : speechController.transcript)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(speechController.transcript.isEmpty ? Bedside.dim : Bedside.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.85)
+                ProgressView(value: speechController.similarity)
+                    .tint(Bedside.accent)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Bedside.surface.opacity(0.45))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Bedside.sep, lineWidth: 0.7))
+            )
+            
+            if speechController.canMockComplete {
+                Button { speechController.mockRecognizeTargetPhrase() } label: {
+                    Label("模拟念出目标语句", systemImage: "text.bubble.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Bedside.amber)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 11)
+                        .background { LiquidGlassCapsule(style: .card, interactive: true) }
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .padding(48)
+        .padding(20)
         .ringingPanel(radius: 24)
         .padding(.horizontal, 24)
+        .onAppear {
+            if Self.debugSpeechNoAutoStart {
+                speechController.prepareMock(phrase: phrase, onComplete: onCorrect)
+            } else {
+                speechController.start(phrase: phrase, onComplete: onCorrect)
+            }
+        }
+        .onDisappear {
+            speechController.stop()
+        }
     }
     
     private var photoCard: some View {
