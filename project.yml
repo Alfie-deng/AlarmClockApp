@@ -17,6 +17,8 @@ targets:
       - Services
       - Views
       - Assets.xcassets
+      - zh-Hans.lproj
+      - en.lproj
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alfie.AlarmClockApp
@@ -33,7 +35,7 @@ targets:
         CODE_SIGNING_REQUIRED: YES
         CODE_SIGNING_ALLOWED: YES
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: AlarmClock
+        INFOPLIST_KEY_CFBundleDisplayName: "挑战闹钟"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "用于识别你是否念出了起床挑战指定语句。"

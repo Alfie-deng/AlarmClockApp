@@ -38,6 +38,7 @@
 
 /* Begin PBXFileReference section */
 		16092AF61CA798D94DC8D893FB9E3BF2 /* CameraChallengeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraChallengeController.swift; sourceTree = "<group>"; };
+		2B50CC428CFD4E580C90C04744E6B2C8 /* zh-Hans.lproj */ = {isa = PBXFileReference; path = "zh-Hans.lproj"; sourceTree = "<group>"; };
 		4105F99CF1436D6C6F66A7D35FE77AC0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		45033F328F426FC6561D8EC087C36D1F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4BECBA8DF7B4006659923097A154E4AB /* AlarmClockAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AlarmClockAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -56,6 +57,7 @@
 		D636589DE2D9D5EFE839E01BC618284E /* ShakeChallengeTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShakeChallengeTracker.swift; sourceTree = "<group>"; };
 		DA76AA13B3AF30AA4D5CE5818C2B9E03 /* WakeSessionStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeSessionStats.swift; sourceTree = "<group>"; };
 		DBBDCEC5F2FFA47A098FCDD2E96DB2E9 /* Alarm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Alarm.swift; sourceTree = "<group>"; };
+		E81441A7EA56EF7FEFCEE58DA5350CDC /* en.lproj */ = {isa = PBXFileReference; path = en.lproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -115,6 +117,8 @@
 				ADFB939DA4228BA465478686E855D956 /* AlarmClockApp.swift */,
 				4105F99CF1436D6C6F66A7D35FE77AC0 /* Assets.xcassets */,
 				45033F328F426FC6561D8EC087C36D1F /* ContentView.swift */,
+				E81441A7EA56EF7FEFCEE58DA5350CDC /* en.lproj */,
+				2B50CC428CFD4E580C90C04744E6B2C8 /* zh-Hans.lproj */,
 				8BA50B5979FAE3F658C89AB3BD8AE5B6 /* Components */,
 				A5A0464FE4DAE97B7C540383722DC567 /* Models */,
 				7B57B30757E425AE906A6F17EAB67A1A /* Services */,
@@ -276,7 +280,7 @@
 				DEVELOPMENT_TEAM = D4SUBHNYW9;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = AlarmClock;
+				INFOPLIST_KEY_CFBundleDisplayName = "挑战闹钟";
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄起床挑战指定目标照片。";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于采集念语句挑战的语音。";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于识别你是否念出了起床挑战指定语句。";
@@ -313,7 +317,7 @@
 				DEVELOPMENT_TEAM = D4SUBHNYW9;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = AlarmClock;
+				INFOPLIST_KEY_CFBundleDisplayName = "挑战闹钟";
 				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄起床挑战指定目标照片。";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于采集念语句挑战的语音。";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于识别你是否念出了起床挑战指定语句。";
