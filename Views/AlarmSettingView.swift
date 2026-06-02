@@ -41,11 +41,6 @@ struct AlarmSettingView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         VStack(spacing: 10) {
-                            Text("选择时间")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Bedside.subtext)
-                                .tracking(1.4)
-                            
                             HStack(spacing: 0) {
                                 Picker("", selection: $hour) {
                                     ForEach(0..<24, id: \.self) { h in
@@ -74,10 +69,6 @@ struct AlarmSettingView: View {
                                 .frame(width: 116, height: 170)
                                 .clipped()
                             }
-                            
-                            Text("AM")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Bedside.amber.opacity(0.78))
                         }
                         .padding(.top, 4)
                         
