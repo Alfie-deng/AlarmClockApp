@@ -360,7 +360,7 @@ private struct WakeCountdownBatteryCard: View {
                         Capsule(style: .continuous)
                             .fill(.white.opacity(0.22))
                             .frame(width: max(16, fillWidth * 0.72), height: 4)
-                            .offset(x: 12, y: -10)
+                            .offset(x: 12, y: -14)
                             .blur(radius: 2)
                             .opacity(0.55)
 
@@ -375,10 +375,10 @@ private struct WakeCountdownBatteryCard: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
-                .frame(height: 40)
+                .frame(height: 52)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 16)
+            .padding(.vertical, 18)
             .background { LiquidGlassPanel(radius: 18, style: .card) }
             .accessibilityElement(children: .combine)
         }
