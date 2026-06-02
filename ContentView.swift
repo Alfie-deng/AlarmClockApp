@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var mgr: AlarmManager
     @State private var tab = 0
+    @GestureState private var tabDragOffset: CGFloat = 0
 
     private var debugScreen: String? {
         guard let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--debugScreen"),
@@ -141,12 +142,18 @@ struct ContentView: View {
         ZStack {
             Bedside.bg.ignoresSafeArea()
             VStack(spacing: 0) {
-                TabView(selection: $tab) {
-                    HomeView().tag(0)
-                    AlarmTabView().tag(1)
-                    StatsView().tag(2)
+                GeometryReader { proxy in
+                    let width = proxy.size.width
+                    HStack(spacing: 0) {
+                        HomeView().frame(width: width)
+                        AlarmTabView().frame(width: width)
+                        StatsView().frame(width: width)
+                    }
+                    .offset(x: -CGFloat(tab) * width + tabDragOffset)
+                    .animation(.interactiveSpring(response: 0.42, dampingFraction: 0.78, blendDuration: 0.12), value: tab)
+                    .gesture(pageDragGesture(pageWidth: width))
+                    .clipped()
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
 
                 HStack(spacing: 0) {
                     tabBtn(index: 0, icon: "house.fill", label: "首页")
@@ -166,7 +173,9 @@ struct ContentView: View {
 
     private func tabBtn(index: Int, icon: String, label: String) -> some View {
         Button {
-            tab = index
+            withAnimation(.interactiveSpring(response: 0.42, dampingFraction: 0.78, blendDuration: 0.12)) {
+                tab = index
+            }
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: icon).font(.system(size: 20, weight: tab == index ? .semibold : .regular))
@@ -176,6 +185,37 @@ struct ContentView: View {
             .foregroundStyle(tab == index ? Bedside.accent : Bedside.dim)
         }
         .buttonStyle(.plain)
+    }
+
+    private func pageDragGesture(pageWidth: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 18, coordinateSpace: .local)
+            .updating($tabDragOffset) { value, state, _ in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard abs(horizontal) > abs(vertical) else { return }
+
+                let isAtLeadingEdge = tab == 0 && horizontal > 0
+                let isAtTrailingEdge = tab == 2 && horizontal < 0
+                let resistance: CGFloat = (isAtLeadingEdge || isAtTrailingEdge) ? 0.34 : 1
+                state = horizontal * resistance
+            }
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let predicted = value.predictedEndTranslation.width
+                guard abs(horizontal) > abs(value.translation.height) else { return }
+
+                let threshold = max(64, pageWidth * 0.18)
+                let shouldMoveLeft = horizontal < -threshold || predicted < -pageWidth * 0.32
+                let shouldMoveRight = horizontal > threshold || predicted > pageWidth * 0.32
+
+                withAnimation(.interactiveSpring(response: 0.42, dampingFraction: 0.76, blendDuration: 0.12)) {
+                    if shouldMoveLeft {
+                        tab = min(tab + 1, 2)
+                    } else if shouldMoveRight {
+                        tab = max(tab - 1, 0)
+                    }
+                }
+            }
     }
 }
 
@@ -212,11 +252,13 @@ private struct AlarmTabView: View {
                         } else {
                             VStack(spacing: 14) {
                                 ForEach(mgr.alarms) { alarm in
-                                    AlarmListCard(
-                                        alarm: alarm,
-                                        onEdit: { editAlarm = alarm },
-                                        onToggle: { mgr.toggleAlarm(alarm) }
-                                    )
+                                    SwipeToDeleteAlarmRow(onDelete: { mgr.deleteAlarm(alarm) }) {
+                                        AlarmListCard(
+                                            alarm: alarm,
+                                            onEdit: { editAlarm = alarm },
+                                            onToggle: { mgr.toggleAlarm(alarm) }
+                                        )
+                                    }
                                 }
 
                                 AddAlarmButton(action: { showAddAlarm = true })
@@ -294,6 +336,61 @@ private struct AddAlarmButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("新增闹钟")
+    }
+}
+
+private struct SwipeToDeleteAlarmRow<Content: View>: View {
+    let onDelete: () -> Void
+    @ViewBuilder let content: Content
+    @State private var offset: CGFloat = 0
+
+    private let revealWidth: CGFloat = 82
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                    offset = 0
+                }
+                onDelete()
+            } label: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Bedside.red.opacity(0.88))
+                        .shadow(color: Bedside.red.opacity(0.28), radius: 16, x: 0, y: 8)
+                    Image(systemName: "trash.fill")
+                        .font(.system(size: 23, weight: .bold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.45), radius: 2, x: 0, y: 1)
+                }
+                .frame(width: revealWidth)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("删除闹钟")
+
+            content
+                .offset(x: offset)
+                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .gesture(
+                    DragGesture(minimumDistance: 12, coordinateSpace: .local)
+                        .onChanged { value in
+                            let horizontal = value.translation.width
+                            guard abs(horizontal) > abs(value.translation.height) else { return }
+                            if horizontal < 0 {
+                                offset = max(horizontal, -revealWidth)
+                            } else {
+                                offset = min(0, -revealWidth + horizontal)
+                            }
+                        }
+                        .onEnded { value in
+                            let shouldReveal = value.translation.width < -revealWidth * 0.42 || value.predictedEndTranslation.width < -revealWidth
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                offset = shouldReveal ? -revealWidth : 0
+                            }
+                        }
+                )
+        }
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: offset)
     }
 }
 
