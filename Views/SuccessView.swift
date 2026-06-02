@@ -2,14 +2,16 @@ import SwiftUI
 
 struct SuccessView: View {
     let session: WakeSession
+    let sessions: [WakeSession]
     let onDone: () -> Void
     let onFeedback: (WakeMood?, String) -> Void
     
     @State private var selectedMood: WakeMood?
     @State private var note: String
     
-    init(session: WakeSession, onDone: @escaping () -> Void, onFeedback: @escaping (WakeMood?, String) -> Void) {
+    init(session: WakeSession, sessions: [WakeSession], onDone: @escaping () -> Void, onFeedback: @escaping (WakeMood?, String) -> Void) {
         self.session = session
+        self.sessions = sessions
         self.onDone = onDone
         self.onFeedback = onFeedback
         _selectedMood = State(initialValue: session.mood)
@@ -86,7 +88,7 @@ struct SuccessView: View {
     private var resultCard: some View {
         VStack(spacing: 14) {
             resultRow("起床时间", value: formattedCompletedTime)
-            resultRow("本次挑战", value: "\(session.challengeType.rawValue)（\(session.mathDifficulty.rawValue)）")
+            resultRow("本次挑战", value: challengeSummary)
             resultRow("用时", value: formattedDuration)
         }
         .padding(18)
@@ -150,7 +152,7 @@ struct SuccessView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Bedside.amber)
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("1")
+                    Text("\(currentStreak)")
                         .font(.system(size: 46, weight: .light, design: .rounded))
                         .foregroundStyle(Bedside.amber)
                     Text("天")
@@ -168,7 +170,7 @@ struct SuccessView: View {
                 Text("历史最长")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
-                Text("待累计")
+                Text(bestStreak > 0 ? "\(bestStreak)天" : "待累计")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Bedside.amber)
             }
@@ -204,6 +206,25 @@ struct SuccessView: View {
         }
         return "\(seconds)秒"
     }
+    
+    private var challengeSummary: String {
+        if session.challengeType == .math {
+            return "\(session.challengeType.rawValue)（\(session.mathDifficulty.rawValue)）"
+        }
+        return session.challengeType.rawValue
+    }
+    
+    private var completedSessions: [WakeSession] {
+        WakeSessionStats.completedSessions(sessions, including: session)
+    }
+    
+    private var currentStreak: Int {
+        WakeSessionStats.currentStreak(sessions: completedSessions, endingOn: session.completedAt)
+    }
+    
+    private var bestStreak: Int {
+        WakeSessionStats.bestStreak(sessions: completedSessions)
+    }
 }
 
 #Preview {
@@ -220,6 +241,7 @@ struct SuccessView: View {
             note: "",
             emergencyClosed: false
         ),
+        sessions: [],
         onDone: {},
         onFeedback: { _, _ in }
     )

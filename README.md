@@ -27,17 +27,18 @@ xcodegen generate
 
 - Dark bedside visual system with iOS 26 Liquid Glass panels.
 - Alarm list, add/edit alarm flow, home next-alarm card, and stats tab.
+- Repeat-day scheduling is backed by local notification weekday triggers.
+- Notification authorization status is surfaced on the home screen when it blocks delivery.
 - Challenge types:
-  - Math
-  - Shake
-  - Speak
-  - Photo
-  - Memory game
+  - Math: supported
+  - Shake: supported with CoreMotion on device and a simulator mock button
+  - Speak / Photo / Memory game: not opened yet
 - Math challenge supports a 3-question flow.
 - Completed challenges create wake session records.
 - Success screen records mood/note feedback.
 - Stats screen is driven by stored wake session data.
 - Local notification callbacks trigger challenges by `alarmId`.
+- Unit tests cover repeat scheduling, challenge availability, and wake-session streak stats.
 
 ## Debug Launch Args
 
@@ -47,6 +48,10 @@ xcodegen generate
 --showChallenge --showChallengeType speak
 --showChallenge --showChallengeType photo
 --showChallenge --showChallengeType memory
+--debugShakeRequiredCount 3
+--showNoChallenge
+--debugScheduleWeekdays
+--debugTriggerStoredAlarm
 --debugScreen math
 --debugScreen success
 ```

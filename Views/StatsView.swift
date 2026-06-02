@@ -175,37 +175,11 @@ struct StatsView: View {
     }
     
     private var currentStreak: Int {
-        streakEnding(on: Date())
+        WakeSessionStats.currentStreak(sessions: completedSessions, endingOn: Date())
     }
     
     private var bestStreak: Int {
-        let days = Set(completedSessions.map(\.completedDay)).sorted()
-        guard !days.isEmpty else { return 0 }
-        var best = 1
-        var current = 1
-        for index in days.indices.dropFirst() {
-            let previous = days[days.index(before: index)]
-            let day = days[index]
-            if Calendar.current.dateComponents([.day], from: previous, to: day).day == 1 {
-                current += 1
-            } else {
-                current = 1
-            }
-            best = max(best, current)
-        }
-        return best
-    }
-    
-    private func streakEnding(on date: Date) -> Int {
-        let calendar = Calendar.current
-        let days = Set(completedSessions.map(\.completedDay))
-        var count = 0
-        var cursor = calendar.startOfDay(for: date)
-        while days.contains(cursor) {
-            count += 1
-            cursor = calendar.date(byAdding: .day, value: -1, to: cursor) ?? cursor
-        }
-        return count
+        WakeSessionStats.bestStreak(sessions: completedSessions)
     }
     
     private var averageDurationText: String {

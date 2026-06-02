@@ -63,6 +63,7 @@ struct ContentView: View {
                         note: "",
                         emergencyClosed: false
                     ),
+                    sessions: [],
                     onDone: {},
                     onFeedback: { _, _ in }
                 )
@@ -84,6 +85,7 @@ struct ContentView: View {
             if let session = mgr.lastCompletedSession {
                 SuccessView(
                     session: session,
+                    sessions: mgr.wakeSessions,
                     onDone: { mgr.dismissSuccess() },
                     onFeedback: { mood, note in
                         mgr.updateSessionFeedback(session, mood: mood, note: note)
@@ -96,6 +98,43 @@ struct ContentView: View {
             let alarm = Alarm(time: Date(), challengeType: debugChallengeType, label: "起床挑战")
             mgr.triggerChallenge(for: alarm)
         }
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("--showNoChallenge"), !mgr.isShowingChallenge else { return }
+            let alarm = Alarm(time: Date(), requiresChallenge: false, label: "普通闹钟")
+            mgr.triggerChallenge(for: alarm)
+        }
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("--debugScheduleWeekdays") else { return }
+            await runDebugScheduleWeekdays()
+        }
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("--debugTriggerStoredAlarm") else { return }
+            await runDebugTriggerStoredAlarm()
+        }
+    }
+    
+    private func runDebugScheduleWeekdays() async {
+        let center = UNUserNotificationCenter.current()
+        center.removeAllPendingNotificationRequests()
+        
+        var components = DateComponents()
+        components.hour = 7
+        components.minute = 30
+        let time = Calendar.current.date(from: components) ?? Date()
+        let alarm = Alarm(time: time, repeatDays: [2, 4, 6])
+        mgr.addAlarm(alarm)
+        
+        try? await Task.sleep(for: .milliseconds(400))
+        let pending = await mgr.pendingNotificationIdentifiers()
+        let joined = pending.joined(separator: ",")
+        print("DEBUG_PENDING_NOTIFICATION_IDS=\(joined)")
+    }
+    
+    private func runDebugTriggerStoredAlarm() async {
+        let alarm = Alarm(time: Date(), challengeType: .math, label: "通知回调验证")
+        mgr.addAlarm(alarm)
+        mgr.triggerChallenge(alarmId: alarm.id.uuidString)
+        print("DEBUG_TRIGGERED_STORED_ALARM_ID=\(alarm.id.uuidString)")
     }
     
     private var appShell: some View {

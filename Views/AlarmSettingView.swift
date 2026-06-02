@@ -13,9 +13,20 @@ struct AlarmSettingView: View {
     @State private var challenge: ChallengeType = .math
     @State private var mathDifficulty: MathDifficulty = .medium
     @State private var repeatDays: Set<Int> = []
-    @State private var wakeChallengeEnabled = true
+    @State private var isAlarmEnabled = true
+    @State private var requiresChallenge = true
     
     var isEdit: Bool { alarm != nil }
+    
+    private let weekdayOptions: [(value: Int, label: String)] = [
+        (2, "一"),
+        (3, "二"),
+        (4, "三"),
+        (5, "四"),
+        (6, "五"),
+        (7, "六"),
+        (1, "日")
+    ]
     
     var body: some View {
         ZStack {
@@ -78,15 +89,15 @@ struct AlarmSettingView: View {
                             Divider().background(Bedside.sep).padding(.leading, 56)
                             row(icon: "calendar", color: Bedside.accent, title: "重复") {
                                 HStack(spacing: 7) {
-                                    ForEach(Array(["一", "二", "三", "四", "五", "六", "日"].enumerated()), id: \.offset) { index, day in
+                                    ForEach(weekdayOptions, id: \.value) { weekday in
                                         Button {
-                                            if repeatDays.contains(index) { repeatDays.remove(index) } else { repeatDays.insert(index) }
+                                            if repeatDays.contains(weekday.value) { repeatDays.remove(weekday.value) } else { repeatDays.insert(weekday.value) }
                                         } label: {
-                                            Text(day)
+                                            Text(weekday.label)
                                                 .font(.system(size: 12, weight: .semibold))
-                                                .foregroundStyle(repeatDays.contains(index) ? Color.black.opacity(0.78) : Bedside.subtext)
+                                                .foregroundStyle(repeatDays.contains(weekday.value) ? Color.black.opacity(0.78) : Bedside.subtext)
                                                 .frame(width: 24, height: 24)
-                                                .background(Circle().fill(repeatDays.contains(index) ? Bedside.accent : Bedside.surface.opacity(0.72)))
+                                                .background(Circle().fill(repeatDays.contains(weekday.value) ? Bedside.accent : Bedside.surface.opacity(0.72)))
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -97,8 +108,14 @@ struct AlarmSettingView: View {
                             Divider().background(Bedside.sep).padding(.leading, 56)
                             PickerRow(icon: "tag.fill", title: "标签", selection: $tag, options: ["工作日", "周末", "运动", "学习"])
                             Divider().background(Bedside.sep).padding(.leading, 56)
+                            row(icon: "power", color: Bedside.accent, title: "启用闹钟") {
+                                Toggle("", isOn: $isAlarmEnabled)
+                                    .labelsHidden()
+                                    .tint(Bedside.accent)
+                            }
+                            Divider().background(Bedside.sep).padding(.leading, 56)
                             row(icon: "shield.checkered", color: Bedside.accent, title: "起床挑战") {
-                                Toggle("", isOn: $wakeChallengeEnabled)
+                                Toggle("", isOn: $requiresChallenge)
                                     .labelsHidden()
                                     .tint(Bedside.accent)
                             }
@@ -111,13 +128,13 @@ struct AlarmSettingView: View {
                                 BedsideIconBadge(systemName: "shield.checkered")
                                 Text("挑战方式").font(.system(size: 17)).foregroundColor(Bedside.text)
                                 Spacer()
-                                BedsidePill(text: wakeChallengeEnabled ? "已开启" : "已关闭")
+                                BedsidePill(text: requiresChallenge ? "已开启" : "已关闭")
                             }
                             .padding(.horizontal, 16).padding(.vertical, 12)
                             
                             Divider().background(Bedside.sep).padding(.leading, 56)
                             
-                            ForEach(ChallengeType.allCases) { type in
+                            ForEach(ChallengeType.supportedCases) { type in
                                 Button { challenge = type } label: {
                                     HStack {
                                         Image(systemName: type.icon).font(.system(size: 18))
@@ -135,6 +152,20 @@ struct AlarmSettingView: View {
                                 .buttonStyle(.plain)
                             }
                             .padding(.vertical, 4)
+                            
+                            if !ChallengeType.betaCases.isEmpty {
+                                Divider().background(Bedside.sep).padding(.leading, 56)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("未开放挑战")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(Bedside.subtext)
+                                    Text(ChallengeType.betaCases.map(\.rawValue).joined(separator: "、") + " 正在打磨中，先别拿它们赌早起。")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundStyle(Bedside.dim)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16)
+                            }
                             
                             if challenge == .math {
                                 Divider().background(Bedside.sep).padding(.leading, 56)
@@ -188,8 +219,9 @@ struct AlarmSettingView: View {
                 mathDifficulty = a.mathDifficulty
                 soundName = a.soundName
                 tag = a.tag
-                repeatDays = a.repeatDays
-                wakeChallengeEnabled = a.isEnabled
+                repeatDays = a.repeatWeekdays
+                isAlarmEnabled = a.isEnabled
+                requiresChallenge = a.requiresChallenge
             }
         }
         .preferredColorScheme(.dark)
@@ -221,7 +253,8 @@ struct AlarmSettingView: View {
         let a = Alarm(
             id: alarm?.id ?? UUID(),
             time: time,
-            isEnabled: wakeChallengeEnabled,
+            isEnabled: isAlarmEnabled,
+            requiresChallenge: requiresChallenge,
             challengeType: challenge,
             mathDifficulty: mathDifficulty,
             label: label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "起床" : label,

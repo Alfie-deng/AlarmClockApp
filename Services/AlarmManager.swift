@@ -11,14 +11,32 @@ class AlarmManager: ObservableObject {
     @Published var wakeSessions: [WakeSession] = []
     @Published var lastCompletedSession: WakeSession?
     @Published var isShowingSuccess: Bool = false
+    @Published var notificationStatus: UNAuthorizationStatus = .notDetermined
     
     private let key = "savedAlarms"
     private let sessionsKey = "wakeSessions"
     
-    init() { loadAlarms(); loadWakeSessions(); requestPermission() }
+    init() {
+        loadAlarms()
+        loadWakeSessions()
+        refreshNotificationStatus()
+        requestPermission()
+    }
     
     func requestPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] _, _ in
+            Task { @MainActor in
+                self?.refreshNotificationStatus()
+            }
+        }
+    }
+    
+    func refreshNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            Task { @MainActor in
+                self?.notificationStatus = settings.authorizationStatus
+            }
+        }
     }
     
     func addAlarm(_ alarm: Alarm) { alarms.append(alarm); saveAlarms(); scheduleNotification(for: alarm) }
@@ -43,21 +61,56 @@ class AlarmManager: ObservableObject {
     private func loadWakeSessions() { if let d = UserDefaults.standard.data(forKey: sessionsKey), let decoded = try? JSONDecoder().decode([WakeSession].self, from: d) { wakeSessions = decoded } }
     
     func scheduleNotification(for alarm: Alarm) {
+        cancelNotification(for: alarm)
+        guard alarm.isEnabled else { return }
+        
         let content = UNMutableNotificationContent()
         content.title = "起床挑战！"
-        content.body = "完成\(alarm.challengeType.rawValue)才能关闭"
+        content.body = alarm.requiresChallenge ? "完成\(alarm.challengeType.rawValue)才能关闭" : "该起床了"
         content.sound = .default
         content.userInfo = ["alarmId": alarm.id.uuidString]
-        let components = Calendar.current.dateComponents([.hour, .minute], from: alarm.time)
-        let request = UNNotificationRequest(identifier: alarm.id.uuidString, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true))
-        UNUserNotificationCenter.current().add(request)
+        
+        let timeComponents = Calendar.current.dateComponents([.hour, .minute], from: alarm.time)
+        let weekdays = alarm.repeatWeekdays
+        if weekdays.isEmpty {
+            let next = alarm.nextOccurrence()
+            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: next)
+            let request = UNNotificationRequest(
+                identifier: alarm.id.uuidString,
+                content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            )
+            UNUserNotificationCenter.current().add(request)
+            return
+        }
+        
+        for weekday in weekdays {
+            var components = DateComponents()
+            components.weekday = weekday
+            components.hour = timeComponents.hour
+            components.minute = timeComponents.minute
+            let identifier = notificationIdentifier(for: alarm, weekday: weekday)
+            let request = UNNotificationRequest(
+                identifier: identifier,
+                content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            )
+            UNUserNotificationCenter.current().add(request)
+        }
     }
     
-    func cancelNotification(for alarm: Alarm) { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [alarm.id.uuidString]) }
+    func cancelNotification(for alarm: Alarm) {
+        let identifiers = [alarm.id.uuidString] + (1...7).map { notificationIdentifier(for: alarm, weekday: $0) } + [snoozeIdentifier(for: alarm)]
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+    
+    func pendingNotificationIdentifiers() async -> [String] {
+        await UNUserNotificationCenter.current().pendingNotificationRequests().map(\.identifier).sorted()
+    }
     
     func triggerChallenge(for alarm: Alarm) {
         triggeredAlarm = alarm
-        currentChallenge = makeChallengeRecord(for: alarm)
+        currentChallenge = alarm.requiresChallenge ? makeChallengeRecord(for: alarm) : makeDismissOnlyRecord(for: alarm)
         isShowingChallenge = true
     }
     
@@ -119,6 +172,9 @@ class AlarmManager: ObservableObject {
             wakeSessions.insert(session, at: 0)
             saveWakeSessions()
         }
+        if let alarm = triggeredAlarm {
+            scheduleSnooze(for: alarm)
+        }
         isShowingChallenge = false
         triggeredAlarm = nil
         currentChallenge = nil
@@ -161,6 +217,40 @@ class AlarmManager: ObservableObject {
         case .memory:
             return ChallengeRecord(alarmId: alarm.id, type: alarm.challengeType, questions: [], phrase: nil, targetPhotoLabel: nil, memoryPattern: Array(0..<4).shuffled(), difficulty: alarm.mathDifficulty, startedAt: Date())
         }
+    }
+    
+    private func makeDismissOnlyRecord(for alarm: Alarm) -> ChallengeRecord {
+        ChallengeRecord(
+            alarmId: alarm.id,
+            type: .math,
+            questions: [MathQuestion(prompt: "点击关闭闹钟", answer: 0)],
+            phrase: nil,
+            targetPhotoLabel: nil,
+            memoryPattern: [],
+            difficulty: alarm.mathDifficulty,
+            startedAt: Date(),
+            requiresChallenge: false
+        )
+    }
+    
+    private func scheduleSnooze(for alarm: Alarm) {
+        let content = UNMutableNotificationContent()
+        content.title = "稍后提醒"
+        content.body = alarm.requiresChallenge ? "继续完成起床挑战" : "该起床了"
+        content.sound = .default
+        content.userInfo = ["alarmId": alarm.id.uuidString]
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(max(1, alarm.snoozeMinutes) * 60), repeats: false)
+        let request = UNNotificationRequest(identifier: snoozeIdentifier(for: alarm), content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    private func notificationIdentifier(for alarm: Alarm, weekday: Int) -> String {
+        "\(alarm.id.uuidString)-weekday-\(weekday)"
+    }
+    
+    private func snoozeIdentifier(for alarm: Alarm) -> String {
+        "\(alarm.id.uuidString)-snooze"
     }
     
     private func makeMathQuestions(difficulty: MathDifficulty) -> [MathQuestion] {

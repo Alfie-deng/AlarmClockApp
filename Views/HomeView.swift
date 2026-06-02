@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 struct HomeView: View {
     @EnvironmentObject var mgr: AlarmManager
@@ -51,6 +52,10 @@ struct HomeView: View {
     
     private var cardStackContent: some View {
         VStack(spacing: 18) {
+            if mgr.notificationStatus.isBlockingAlarmDelivery {
+                NotificationWarningCard()
+            }
+            
             AlarmHeroCard(
                 alarm: next,
                 onTap: {
@@ -67,7 +72,7 @@ struct HomeView: View {
                 }
             )
             
-            BedtimeReminderCard()
+            BedtimeReminderCard(isEnabled: false)
         }
     }
 }
@@ -299,7 +304,28 @@ private struct AlarmHeroCard: View {
     }
 }
 
+private struct NotificationWarningCard: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            BedsideIconBadge(systemName: "bell.slash.fill", color: Bedside.red)
+            VStack(alignment: .leading, spacing: 5) {
+                Text("通知未开启")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Bedside.text)
+                Text("闹钟需要系统通知权限，否则不会准时响起。")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background { LiquidGlassPanel(radius: 18, style: .card) }
+    }
+}
+
 private struct BedtimeReminderCard: View {
+    let isEnabled: Bool
+    
     var body: some View {
         ZStack {
             LiquidGlassPanel(radius: 18, style: .card)
@@ -319,22 +345,34 @@ private struct BedtimeReminderCard: View {
                     Text("就寝提醒")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Bedside.text)
-                    Text("23:00 提醒就寝")
+                    Text("后续接入")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Bedside.text.opacity(0.82))
-                    Text("帮助你获得充足睡眠")
+                    Text("当前版本先专注起床闹钟闭环")
                         .font(.system(size: 13, weight: .regular))
                         .foregroundStyle(Bedside.subtext)
                 }
                 
                 Spacer()
                 
-                Toggle("", isOn: .constant(true))
+                Toggle("", isOn: .constant(isEnabled))
                     .labelsHidden()
                     .tint(Bedside.accent)
                     .scaleEffect(0.92)
+                    .disabled(true)
             }
             .padding(16)
+        }
+    }
+}
+
+private extension UNAuthorizationStatus {
+    var isBlockingAlarmDelivery: Bool {
+        switch self {
+        case .denied, .ephemeral:
+            return true
+        default:
+            return false
         }
     }
 }

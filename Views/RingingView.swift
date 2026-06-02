@@ -95,9 +95,19 @@ struct RingingView: View {
     @State private var result: Bool? = nil
     @State private var questionIndex = 0
     @State private var memoryInput: [Int] = []
+    @StateObject private var shakeController = ShakeChallengeController(requiredCount: RingingView.debugShakeRequiredCount)
     
     private var time: String {
         let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: Date())
+    }
+    
+    private static var debugShakeRequiredCount: Int {
+        guard let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--debugShakeRequiredCount"),
+              ProcessInfo.processInfo.arguments.indices.contains(index + 1),
+              let count = Int(ProcessInfo.processInfo.arguments[index + 1]) else {
+            return 20
+        }
+        return max(1, count)
     }
     
     var body: some View {
@@ -144,13 +154,66 @@ struct RingingView: View {
     
     @ViewBuilder
     private var challengeContent: some View {
-        switch record.type {
-        case .math: mathCard
-        case .shake: shakeCard
-        case .speak: speakCard
-        case .photo: photoCard
-        case .memory: memoryCard
+        if !record.requiresChallenge {
+            dismissOnlyCard
+        } else {
+            switch record.type {
+            case .math: mathCard
+            case .shake: shakeCard
+            case .speak, .photo, .memory: unavailableCard
+            }
         }
+    }
+    
+    private var dismissOnlyCard: some View {
+        VStack(spacing: 22) {
+            BedsideIconBadge(systemName: "alarm.fill")
+                .scaleEffect(1.18)
+            VStack(spacing: 8) {
+                Text("闹钟响了")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Bedside.text)
+                Text("当前闹钟未启用起床挑战，可以直接关闭。")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
+                    .multilineTextAlignment(.center)
+            }
+            Button("关闭闹钟") { onCorrect() }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.black.opacity(0.82))
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
+                .background(Capsule(style: .continuous).fill(Bedside.accent))
+        }
+        .padding(42)
+        .ringingPanel(radius: 24)
+        .padding(.horizontal, 24)
+    }
+    
+    private var unavailableCard: some View {
+        VStack(spacing: 20) {
+            Image(systemName: record.type.icon)
+                .font(.system(size: 48))
+                .foregroundStyle(Bedside.accent)
+            VStack(spacing: 8) {
+                Text("\(record.type.rawValue)挑战暂未开放")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Bedside.text)
+                Text("当前正式可用的是数学题挑战。这个模式还需要接入真实能力后再开放。")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
+                    .multilineTextAlignment(.center)
+            }
+            Button("先关闭闹钟") { onCorrect() }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.black.opacity(0.82))
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
+                .background(Capsule(style: .continuous).fill(Bedside.accent))
+        }
+        .padding(42)
+        .ringingPanel(radius: 24)
+        .padding(.horizontal, 24)
     }
     
     // MARK: - 数学挑战
@@ -295,22 +358,81 @@ struct RingingView: View {
     
     // MARK: - 摇晃挑战
     private var shakeCard: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "iphone.radiowaves.left.and.right")
-                .font(.system(size: 48)).foregroundColor(Bedside.accent)
-            Text("用力摇晃手机来关闭闹钟")
-                .font(.system(size: 16)).foregroundColor(Bedside.subtext)
-                .multilineTextAlignment(.center)
-            Button("我已经摇醒了") { onCorrect() }
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.82))
-                .padding(.horizontal, 22)
-                .padding(.vertical, 12)
-                .background(Capsule(style: .continuous).fill(Bedside.accent))
+        VStack(spacing: 22) {
+            HStack(alignment: .center, spacing: 12) {
+                BedsideIconBadge(systemName: "iphone.radiowaves.left.and.right")
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("摇手机挑战")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Bedside.text)
+                    Text(shakeController.isMotionAvailable ? "用力摇晃手机，清醒到位再关闭" : "当前设备不支持传感器，使用模拟按钮验证")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Bedside.subtext)
+                }
+                
+                Spacer()
+                
+                Text("\(shakeController.count)/\(shakeController.requiredCount)")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Bedside.amber)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Bedside.accent.opacity(0.12))
+                            .overlay(Capsule().stroke(Bedside.accent.opacity(0.22), lineWidth: 0.6))
+                    )
+            }
+            
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(Color.black.opacity(0.26))
+                    .frame(height: 18)
+                    .overlay(Capsule().stroke(Bedside.sep, lineWidth: 0.7))
+                
+                Capsule(style: .continuous)
+                    .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .leading, endPoint: .trailing))
+                    .frame(maxWidth: .infinity)
+                    .frame(width: max(18, CGFloat(shakeController.progress) * 260), height: 18)
+                    .shadow(color: Bedside.accent.opacity(0.28), radius: 10)
+            }
+            .frame(maxWidth: .infinity)
+            
+            VStack(spacing: 7) {
+                Image(systemName: "iphone.gen3.radiowaves.left.and.right")
+                    .font(.system(size: 58, weight: .light))
+                    .foregroundStyle(Bedside.accent)
+                    .symbolEffect(.pulse, options: .repeating, value: shakeController.count)
+                Text(shakeController.isRunning ? "传感器监听中" : "准备开始")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            
+            Button {
+                shakeController.recordMockShake()
+            } label: {
+                Label("模拟摇动一次", systemImage: "hand.raised.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Bedside.amber)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 11)
+                    .background { LiquidGlassCapsule(style: .card, interactive: true) }
+            }
+            .buttonStyle(.plain)
         }
-        .padding(48)
+        .padding(20)
         .ringingPanel(radius: 24)
         .padding(.horizontal, 24)
+        .onAppear {
+            shakeController.start(onComplete: onCorrect)
+        }
+        .onDisappear {
+            shakeController.stop()
+        }
     }
     
     // MARK: - 语音挑战
