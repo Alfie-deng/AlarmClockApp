@@ -39,10 +39,10 @@ final class AlarmLogicTests: XCTestCase {
     }
     
     func testSupportedChallengeCasesExposeRealImplementedModes() {
-        XCTAssertEqual(ChallengeType.supportedCases, [.math, .shake, .speak])
+        XCTAssertEqual(ChallengeType.supportedCases, [.math, .shake, .speak, .photo])
         XCTAssertFalse(ChallengeType.betaCases.contains(.shake))
         XCTAssertFalse(ChallengeType.betaCases.contains(.speak))
-        XCTAssertTrue(ChallengeType.betaCases.contains(.photo))
+        XCTAssertFalse(ChallengeType.betaCases.contains(.photo))
         XCTAssertTrue(ChallengeType.betaCases.contains(.memory))
     }
     

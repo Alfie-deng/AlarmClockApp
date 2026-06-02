@@ -97,6 +97,7 @@ struct RingingView: View {
     @State private var memoryInput: [Int] = []
     @StateObject private var shakeController = ShakeChallengeController(requiredCount: RingingView.debugShakeRequiredCount)
     @StateObject private var speechController = SpeechChallengeController()
+    @StateObject private var cameraController = CameraChallengeController()
     
     private var time: String {
         let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: Date())
@@ -166,7 +167,8 @@ struct RingingView: View {
             case .math: mathCard
             case .shake: shakeCard
             case .speak: speakCard
-            case .photo, .memory: unavailableCard
+            case .photo: photoCard
+            case .memory: unavailableCard
             }
         }
     }
@@ -537,26 +539,110 @@ struct RingingView: View {
     }
     
     private var photoCard: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "camera.viewfinder")
-                .font(.system(size: 52))
-                .foregroundStyle(Bedside.accent)
-            Text("拍照挑战")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Bedside.text)
-            Text("请拍摄：\(record.targetPhotoLabel ?? "床头灯")")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Bedside.subtext)
-            Button("模拟拍照完成") { onCorrect() }
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.82))
-                .padding(.horizontal, 22)
-                .padding(.vertical, 12)
-                .background(Capsule(style: .continuous).fill(Bedside.accent))
+        let target = record.targetPhotoLabel ?? "床头灯"
+        return VStack(spacing: 20) {
+            HStack(alignment: .center, spacing: 12) {
+                BedsideIconBadge(systemName: "camera.viewfinder")
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("拍照挑战")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Bedside.text)
+                    Text(cameraController.state.message)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Bedside.subtext)
+                }
+                Spacer()
+                Image(systemName: cameraController.capturedImage == nil ? "camera.fill" : "checkmark.circle.fill")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(cameraController.capturedImage == nil ? Bedside.amber : Bedside.green)
+            }
+            
+            VStack(spacing: 10) {
+                Text("请拍摄指定目标")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Bedside.subtext)
+                    .textCase(.uppercase)
+                    .tracking(1.2)
+                Text(target)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(Bedside.text)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.black.opacity(0.22))
+                            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Bedside.accent.opacity(0.24), lineWidth: 0.8))
+                    )
+                Text("先拍照确认你真的离开床边；视觉识别后续再接，不在这里装神弄鬼。")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+            }
+            
+            if let image = cameraController.capturedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 150)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Bedside.accent.opacity(0.28), lineWidth: 0.8))
+                    .accessibilityLabel("已拍摄照片预览")
+                HStack(spacing: 12) {
+                    Button { cameraController.retake() } label: {
+                        Label("重拍", systemImage: "arrow.triangle.2.circlepath.camera")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Bedside.amber)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background { LiquidGlassCapsule(style: .card, interactive: true) }
+                    }
+                    .buttonStyle(.plain)
+                    Button { onCorrect() } label: {
+                        Label("确认完成", systemImage: "checkmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.black.opacity(0.82))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Capsule(style: .continuous).fill(Bedside.accent))
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                Button { cameraController.requestCameraAccessThenOpen() } label: {
+                    Label("打开相机拍照", systemImage: "camera.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.black.opacity(0.82))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Capsule(style: .continuous).fill(Bedside.accent))
+                }
+                .buttonStyle(.plain)
+                
+                if cameraController.canMockCapture {
+                    Button { cameraController.mockCapture() } label: {
+                        Label("模拟拍到目标", systemImage: "photo.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Bedside.amber)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 11)
+                            .background { LiquidGlassCapsule(style: .card, interactive: true) }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
-        .padding(42)
+        .padding(20)
         .ringingPanel(radius: 24)
         .padding(.horizontal, 24)
+        .sheet(isPresented: $cameraController.isShowingCamera) {
+            CameraCaptureView(
+                onImage: { cameraController.accept(image: $0) },
+                onCancel: { cameraController.isShowingCamera = false }
+            )
+            .ignoresSafeArea()
+        }
     }
     
     private var memoryCard: some View {

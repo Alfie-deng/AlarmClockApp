@@ -36,6 +36,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "用于识别你是否念出了起床挑战指定语句。"
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "用于采集念语句挑战的语音。"
+        INFOPLIST_KEY_NSCameraUsageDescription: "用于拍摄起床挑战指定目标照片。"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
   AlarmClockAppTests:
