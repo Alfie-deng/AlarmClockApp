@@ -108,6 +108,8 @@ final class SpeechChallengeController: ObservableObject {
     func prepareMock(phrase: String, onComplete: @escaping () -> Void) {
         self.onComplete = onComplete
         matcher = SpeechPhraseMatcher(targetPhrase: phrase)
+        transcript = ""
+        similarity = 0
         state = .idle
     }
     

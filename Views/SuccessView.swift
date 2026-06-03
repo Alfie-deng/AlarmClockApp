@@ -1,14 +1,23 @@
 import SwiftUI
 
+private enum SuccessDateFormatters {
+    static let completedTime: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+}
+
+
 struct SuccessView: View {
     let session: WakeSession
     let sessions: [WakeSession]
     let onDone: () -> Void
     let onFeedback: (WakeMood?, String) -> Void
-    
+
     @State private var selectedMood: WakeMood?
     @State private var note: String
-    
+
     init(session: WakeSession, sessions: [WakeSession], onDone: @escaping () -> Void, onFeedback: @escaping (WakeMood?, String) -> Void) {
         self.session = session
         self.sessions = sessions
@@ -17,187 +26,124 @@ struct SuccessView: View {
         _selectedMood = State(initialValue: session.mood)
         _note = State(initialValue: session.note)
     }
-    
+
     var body: some View {
         ZStack {
-            RingingAmbientBackground()
+            SuccessMorningBackdrop()
                 .ignoresSafeArea()
-            
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    sunBadge
-                        .padding(.top, 44)
-                    
-                    VStack(spacing: 8) {
-                        Text(session.emergencyClosed ? "已紧急关闭" : "起床成功！")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundStyle(session.emergencyClosed ? Bedside.red : Bedside.amber)
-                        Text(session.emergencyClosed ? "今天先记一笔，下次别让闹钟赢。" : "新的一天，继续加油！")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(Bedside.subtext)
-                    }
-                    
-                    resultCard
-                    moodCard
-                    streakCard
-                    
-                    Button {
-                        onFeedback(selectedMood, note)
-                        onDone()
-                    } label: {
-                        Text("完成")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Color.black.opacity(0.82))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 15)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 4)
+
+            VStack(spacing: 0) {
+                Spacer(minLength: 68)
+
+                successHero
+
+                Spacer()
+
+                Button {
+                    onFeedback(selectedMood, note)
+                    onDone()
+                } label: {
+                    Text(session.emergencyClosed ? "知道了" : "完成")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.black.opacity(0.82))
+                        .frame(maxWidth: 320)
+                        .padding(.vertical, 15)
                 }
+                .buttonStyle(.plain)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
+                )
                 .padding(.horizontal, 24)
-                .padding(.bottom, 36)
+                .padding(.bottom, 48)
             }
         }
         .preferredColorScheme(.dark)
     }
-    
-    private var sunBadge: some View {
+
+    private var successHero: some View {
+        VStack(spacing: 28) {
+            VStack(spacing: 10) {
+                Text(session.emergencyClosed ? "已紧急关闭" : "起床成功")
+                    .font(.system(size: 42, weight: .bold))
+                    .foregroundStyle(session.emergencyClosed ? Bedside.red : Bedside.text)
+
+                Text(session.emergencyClosed ? "这次先算赖床赢了" : "今天没有被床封印")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(session.emergencyClosed ? Bedside.red.opacity(0.86) : Bedside.amber)
+                    .multilineTextAlignment(.center)
+                    .shadow(color: Bedside.accent.opacity(session.emergencyClosed ? 0 : 0.30), radius: 14)
+            }
+
+            if session.emergencyClosed {
+                emergencyMark
+            } else {
+                Color.clear
+                    .frame(height: 330)
+            }
+
+            if session.emergencyClosed {
+                summaryLine
+                    .padding(.top, 0)
+            }
+        }
+        .frame(maxWidth: 390)
+        .padding(.horizontal, 28)
+    }
+
+    private var emergencyMark: some View {
+        Image(systemName: "exclamationmark.triangle.fill")
+            .font(.system(size: 54, weight: .semibold))
+            .foregroundStyle(Bedside.red)
+            .frame(height: 122)
+    }
+
+    private var breathingLine: some View {
         ZStack {
-            Circle()
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(0.08))
+                .frame(width: 164, height: 2)
+
+            Capsule(style: .continuous)
                 .fill(
-                    RadialGradient(
-                        colors: [Bedside.amber, Bedside.accent.opacity(0.78), Bedside.accent.opacity(0.18)],
-                        center: .center,
-                        startRadius: 12,
-                        endRadius: 74
+                    LinearGradient(
+                        colors: [.clear, Bedside.amber.opacity(session.emergencyClosed ? 0 : 0.95), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
                     )
                 )
-                .frame(width: 118, height: 118)
-                .shadow(color: Bedside.accent.opacity(0.48), radius: 28)
-            
-            Text(session.emergencyClosed ? "!" : "☀")
-                .font(.system(size: 54, weight: .bold))
-                .foregroundStyle(Color.black.opacity(0.62))
+                .frame(width: 164, height: 2)
+                .blur(radius: 0.5)
         }
     }
-    
-    private var resultCard: some View {
-        VStack(spacing: 14) {
-            resultRow("起床时间", value: formattedCompletedTime)
-            resultRow("本次挑战", value: challengeSummary)
-            resultRow("用时", value: formattedDuration)
+
+    private var summaryLine: some View {
+        HStack(spacing: 7) {
+            Text(challengeResultText)
+            Text("·")
+                .foregroundStyle(Bedside.dim)
+            Text("用时 \(formattedDuration)")
+            Text("·")
+                .foregroundStyle(Bedside.dim)
+            Text("连续 \(currentStreak) 天")
         }
-        .padding(18)
-        .background { LiquidGlassPanel(radius: 18, style: .card) }
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(Bedside.subtext)
+        .lineLimit(1)
+        .minimumScaleFactor(0.68)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color.black.opacity(0.18))
+                .overlay(Capsule(style: .continuous).stroke(Bedside.sep.opacity(0.72), lineWidth: 0.7))
+        )
     }
-    
-    private var moodCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("今天的感觉怎么样？")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Bedside.subtext)
-            
-            HStack(spacing: 12) {
-                ForEach(WakeMood.allCases) { mood in
-                    Button {
-                        selectedMood = mood
-                    } label: {
-                        VStack(spacing: 8) {
-                            Image(systemName: mood.icon)
-                                .font(.system(size: 28, weight: .medium))
-                                .foregroundStyle(selectedMood == mood ? Bedside.accent : Bedside.subtext)
-                            Text(mood.rawValue)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(selectedMood == mood ? Bedside.amber : Bedside.subtext)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill((selectedMood == mood ? Bedside.accent : .white).opacity(selectedMood == mood ? 0.13 : 0.045))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke((selectedMood == mood ? Bedside.accent : .white).opacity(selectedMood == mood ? 0.28 : 0.08), lineWidth: 0.7)
-                                )
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("今天的感觉...")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Bedside.subtext)
-                TextField("记录一下你的想法吧...", text: $note, axis: .vertical)
-                    .lineLimit(2...4)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Bedside.text)
-                    .padding(13)
-                    .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-        }
-        .padding(18)
-        .background { LiquidGlassPanel(radius: 18, style: .card) }
-    }
-    
-    private var streakCard: some View {
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("🔥 连续起床")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Bedside.amber)
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("\(currentStreak)")
-                        .font(.system(size: 46, weight: .light, design: .rounded))
-                        .foregroundStyle(Bedside.amber)
-                    Text("天")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Bedside.subtext)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            Rectangle()
-                .fill(Bedside.sep)
-                .frame(width: 0.7, height: 64)
-            
-            VStack(alignment: .trailing, spacing: 6) {
-                Text("历史最长")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Bedside.subtext)
-                Text(bestStreak > 0 ? "\(bestStreak)天" : "待累计")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Bedside.amber)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-        .padding(18)
-        .background { LiquidGlassPanel(radius: 18, style: .card) }
-    }
-    
-    private func resultRow(_ title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Bedside.subtext)
-            Spacer()
-            Text(value)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Bedside.amber)
-        }
-    }
-    
+
     private var formattedCompletedTime: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: session.completedAt)
+        SuccessDateFormatters.completedTime.string(from: session.completedAt)
     }
-    
+
     private var formattedDuration: String {
         let minutes = session.durationSeconds / 60
         let seconds = session.durationSeconds % 60
@@ -206,24 +152,68 @@ struct SuccessView: View {
         }
         return "\(seconds)秒"
     }
-    
+
     private var challengeSummary: String {
         if session.challengeType == .math {
             return "\(session.challengeType.rawValue)（\(session.mathDifficulty.rawValue)）"
         }
         return session.challengeType.rawValue
     }
-    
+
+    private var challengeResultText: String {
+        if session.emergencyClosed {
+            return "紧急关闭"
+        }
+        return "\(challengeSummary)通过"
+    }
+
     private var completedSessions: [WakeSession] {
         WakeSessionStats.completedSessions(sessions, including: session)
     }
-    
+
     private var currentStreak: Int {
         WakeSessionStats.currentStreak(sessions: completedSessions, endingOn: session.completedAt)
     }
-    
+
     private var bestStreak: Int {
         WakeSessionStats.bestStreak(sessions: completedSessions)
+    }
+}
+
+private struct SuccessMorningBackdrop: View {
+    var body: some View {
+        ZStack {
+            Image("SuccessGeneratedBackground")
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            VStack {
+                LinearGradient(
+                    colors: [
+                        Bedside.bg.opacity(0.92),
+                        Bedside.bg.opacity(0.58),
+                        .clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 330)
+                Spacer()
+            }
+
+            LinearGradient(
+                colors: [
+                    .clear,
+                    .clear,
+                    Bedside.bg.opacity(0.34),
+                    Bedside.bg
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .background(Bedside.bg)
     }
 }
 

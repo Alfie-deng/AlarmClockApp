@@ -1,38 +1,47 @@
 import SwiftUI
 
+private enum RingingDateFormatters {
+    static let time: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+}
+
+
 struct RingingIntroView: View {
     let timeText: String
     let challengeName: String
     let onStartChallenge: () -> Void
     let onSnooze: () -> Void
-    
+
     var body: some View {
         ZStack {
             RingingAmbientBackground()
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 Spacer(minLength: 24)
-                
+
                 Text("起床闹钟")
                     .font(.system(size: 21, weight: .bold))
                     .foregroundStyle(Bedside.text)
-                
+
                 Text(timeText)
                     .font(.system(size: 96, weight: .light, design: .rounded))
                     .monospacedDigit()
                     .glow(Bedside.amber)
                     .padding(.top, 20)
-                
+
                 BedsidePill(text: "挑战模式：\(challengeName)", icon: "shield.checkered")
                     .padding(.top, 10)
-                
+
                 Spacer()
-                
+
                 VStack(spacing: 18) {
                     BedsideIconBadge(systemName: "alarm.waves.left.and.right.fill")
                         .scaleEffect(1.3)
-                    
+
                     VStack(spacing: 8) {
                         Text("完成挑战才能关闭闹钟")
                             .font(.system(size: 22, weight: .semibold))
@@ -42,7 +51,7 @@ struct RingingIntroView: View {
                             .foregroundStyle(Bedside.subtext)
                     }
                     .multilineTextAlignment(.center)
-                    
+
                     Button(action: onStartChallenge) {
                         HStack(spacing: 10) {
                             Text("开始挑战")
@@ -64,9 +73,9 @@ struct RingingIntroView: View {
                 .padding(24)
                 .ringingPanel(radius: 24)
                 .padding(.horizontal, 24)
-                
+
                 Spacer()
-                
+
                 Button(action: onSnooze) {
                     HStack(spacing: 6) {
                         Image(systemName: "moon.zzz.fill")
@@ -90,19 +99,28 @@ struct RingingView: View {
     let record: ChallengeRecord
     let onCorrect: () -> Void
     let onSnooze: () -> Void
-    
+
     @State private var answer = ""
     @State private var result: Bool? = nil
     @State private var questionIndex = 0
     @State private var memoryInput: [Int] = []
-    @StateObject private var shakeController = ShakeChallengeController(requiredCount: RingingView.debugShakeRequiredCount)
+    @State private var speechCompletedCount = 0
+    @State private var soundPlayer = AlarmSoundPlayer()
+    @StateObject private var shakeController: ShakeChallengeController
     @StateObject private var speechController = SpeechChallengeController()
     @StateObject private var cameraController = CameraChallengeController()
-    
-    private var time: String {
-        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: Date())
+
+    init(record: ChallengeRecord, onCorrect: @escaping () -> Void, onSnooze: @escaping () -> Void) {
+        self.record = record
+        self.onCorrect = onCorrect
+        self.onSnooze = onSnooze
+        _shakeController = StateObject(wrappedValue: ShakeChallengeController(requiredCount: record.shakeRequiredCount))
     }
-    
+
+    private var time: String {
+        RingingDateFormatters.time.string(from: Date())
+    }
+
     private static var debugShakeRequiredCount: Int {
         guard let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--debugShakeRequiredCount"),
               ProcessInfo.processInfo.arguments.indices.contains(index + 1),
@@ -111,18 +129,18 @@ struct RingingView: View {
         }
         return max(1, count)
     }
-    
+
     private static var debugSpeechNoAutoStart: Bool {
         ProcessInfo.processInfo.arguments.contains("--debugSpeechNoAutoStart")
     }
-    
+
     var body: some View {
         ZStack {
             RingingAmbientBackground()
                 .ignoresSafeArea()
             VStack(spacing: 0) {
                 Spacer(minLength: 16)
-                
+
                 // 发光时间
                 Text("起床闹钟")
                     .font(.system(size: 20, weight: .bold))
@@ -134,14 +152,14 @@ struct RingingView: View {
                     .glow(Bedside.amber)
                 BedsidePill(text: "挑战模式：\(record.type.rawValue)", icon: "shield.checkered")
                     .padding(.top, 10)
-                
+
                 Spacer()
-                
+
                 // 挑战卡片
                 challengeContent
-                
+
                 Spacer()
-                
+
                 // 稍后提醒
                 Button { onSnooze() } label: {
                     HStack(spacing: 6) {
@@ -156,8 +174,14 @@ struct RingingView: View {
                 .padding(.bottom, 40)
             }
         }
+        .onAppear {
+            soundPlayer.start(soundName: record.soundName)
+        }
+        .onDisappear {
+            soundPlayer.stop()
+        }
     }
-    
+
     @ViewBuilder
     private var challengeContent: some View {
         if !record.requiresChallenge {
@@ -172,7 +196,7 @@ struct RingingView: View {
             }
         }
     }
-    
+
     private var dismissOnlyCard: some View {
         VStack(spacing: 22) {
             BedsideIconBadge(systemName: "alarm.fill")
@@ -197,7 +221,7 @@ struct RingingView: View {
         .ringingPanel(radius: 24)
         .padding(.horizontal, 24)
     }
-    
+
     private var unavailableCard: some View {
         VStack(spacing: 20) {
             Image(systemName: record.type.icon)
@@ -223,13 +247,13 @@ struct RingingView: View {
         .ringingPanel(radius: 24)
         .padding(.horizontal, 24)
     }
-    
+
     // MARK: - 数学挑战
     private var mathCard: some View {
         VStack(spacing: 18) {
             HStack(alignment: .center, spacing: 12) {
                 BedsideIconBadge(systemName: "plus.forwardslash.minus")
-                
+
                 VStack(alignment: .leading, spacing: 3) {
                     Text("数学题挑战")
                         .font(.system(size: 17, weight: .semibold))
@@ -238,9 +262,9 @@ struct RingingView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Bedside.subtext)
                 }
-                
+
                 Spacer()
-                
+
                 Text(String(format: "%02d", questionIndex + 1))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .monospacedDigit()
@@ -252,26 +276,26 @@ struct RingingView: View {
                             .overlay(Capsule().stroke(Bedside.accent.opacity(0.22), lineWidth: 0.6))
                     )
             }
-            
+
             VStack(spacing: 16) {
                 Text("解答以下题目")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Bedside.subtext)
                     .textCase(.uppercase)
                     .tracking(1.2)
-                
+
                 Text(currentQuestion?.prompt ?? record.question)
                     .font(.system(size: 40, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .minimumScaleFactor(0.75)
                     .foregroundColor(Bedside.text)
                     .shadow(color: Bedside.amber.opacity(0.18), radius: 10)
-                
+
                 answerField
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            
+
             VStack(spacing: 9) {
                 ForEach(0..<3) { row in
                     HStack(spacing: 9) {
@@ -287,7 +311,7 @@ struct RingingView: View {
                 }
             }
             .padding(10)
-            
+
             if let r = result {
                 HStack(spacing: 6) {
                     Image(systemName: r ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -304,7 +328,7 @@ struct RingingView: View {
         .ringingPanel(radius: 24)
         .padding(.horizontal, 24)
     }
-    
+
     private func keyBtn(_ title: String? = nil, icon: String? = nil, disabled: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             ZStack {
@@ -316,7 +340,7 @@ struct RingingView: View {
                     }
                     .opacity(disabled ? 0.55 : 1)
                     .shadow(color: icon == "checkmark" ? Bedside.accent.opacity(0.14) : .black.opacity(0.12), radius: 6, x: 0, y: 3)
-                
+
                 if let t = title {
                     Text(t)
                         .font(.system(size: 23, weight: .semibold, design: .rounded))
@@ -333,7 +357,7 @@ struct RingingView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private var answerField: some View {
         HStack(spacing: 10) {
             Text(answer.isEmpty ? "输入答案" : answer)
@@ -343,7 +367,7 @@ struct RingingView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
                 .frame(maxWidth: .infinity, minHeight: 56)
-            
+
             if !answer.isEmpty {
                 Text("\(answer.count) 位")
                     .font(.system(size: 11, weight: .semibold))
@@ -363,13 +387,13 @@ struct RingingView: View {
                 )
         )
     }
-    
+
     // MARK: - 摇晃挑战
     private var shakeCard: some View {
         VStack(spacing: 22) {
             HStack(alignment: .center, spacing: 12) {
                 BedsideIconBadge(systemName: "iphone.radiowaves.left.and.right")
-                
+
                 VStack(alignment: .leading, spacing: 3) {
                     Text("摇手机挑战")
                         .font(.system(size: 17, weight: .semibold))
@@ -378,9 +402,9 @@ struct RingingView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Bedside.subtext)
                 }
-                
+
                 Spacer()
-                
+
                 Text("\(shakeController.count)/\(shakeController.requiredCount)")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .monospacedDigit()
@@ -393,13 +417,13 @@ struct RingingView: View {
                             .overlay(Capsule().stroke(Bedside.accent.opacity(0.22), lineWidth: 0.6))
                     )
             }
-            
+
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
                     .fill(Color.black.opacity(0.26))
                     .frame(height: 18)
                     .overlay(Capsule().stroke(Bedside.sep, lineWidth: 0.7))
-                
+
                 Capsule(style: .continuous)
                     .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .leading, endPoint: .trailing))
                     .frame(maxWidth: .infinity)
@@ -407,7 +431,7 @@ struct RingingView: View {
                     .shadow(color: Bedside.accent.opacity(0.28), radius: 10)
             }
             .frame(maxWidth: .infinity)
-            
+
             VStack(spacing: 7) {
                 Image(systemName: "iphone.gen3.radiowaves.left.and.right")
                     .font(.system(size: 58, weight: .light))
@@ -419,7 +443,7 @@ struct RingingView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
-            
+
             Button {
                 shakeController.recordMockShake()
             } label: {
@@ -442,7 +466,7 @@ struct RingingView: View {
             shakeController.stop()
         }
     }
-    
+
     // MARK: - 语音挑战
     private var speakCard: some View {
         let phrase = record.phrase ?? "我已经醒了，今天也要准时开始"
@@ -453,7 +477,7 @@ struct RingingView: View {
                     Text("念语句挑战")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Bedside.text)
-                    Text(speechController.state.message)
+                    Text(speechSubtitle)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Bedside.subtext)
                 }
@@ -463,7 +487,7 @@ struct RingingView: View {
                     .foregroundStyle(speechController.state == .matched ? Bedside.green : Bedside.amber)
                     .symbolEffect(.pulse, options: .repeating, value: speechController.transcript)
             }
-            
+
             VStack(spacing: 10) {
                 Text("请清楚念出")
                     .font(.system(size: 12, weight: .semibold))
@@ -483,7 +507,7 @@ struct RingingView: View {
                             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Bedside.accent.opacity(0.22), lineWidth: 0.8))
                     )
             }
-            
+
             VStack(alignment: .leading, spacing: 9) {
                 HStack {
                     Text("识别内容")
@@ -510,7 +534,7 @@ struct RingingView: View {
                     .fill(Bedside.surface.opacity(0.45))
                     .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Bedside.sep, lineWidth: 0.7))
             )
-            
+
             if speechController.canMockComplete {
                 Button { speechController.mockRecognizeTargetPhrase() } label: {
                     Label("模拟念出目标语句", systemImage: "text.bubble.fill")
@@ -528,16 +552,16 @@ struct RingingView: View {
         .padding(.horizontal, 24)
         .onAppear {
             if Self.debugSpeechNoAutoStart {
-                speechController.prepareMock(phrase: phrase, onComplete: onCorrect)
+                speechController.prepareMock(phrase: phrase, onComplete: handleSpeechMatch)
             } else {
-                speechController.start(phrase: phrase, onComplete: onCorrect)
+                speechController.start(phrase: phrase, onComplete: handleSpeechMatch)
             }
         }
         .onDisappear {
             speechController.stop()
         }
     }
-    
+
     private var photoCard: some View {
         let target = record.targetPhotoLabel ?? "床头灯"
         return VStack(spacing: 20) {
@@ -552,11 +576,11 @@ struct RingingView: View {
                         .foregroundStyle(Bedside.subtext)
                 }
                 Spacer()
-                Image(systemName: cameraController.capturedImage == nil ? "camera.fill" : "checkmark.circle.fill")
+                Image(systemName: cameraController.didMatchTarget ? "checkmark.circle.fill" : "camera.fill")
                     .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(cameraController.capturedImage == nil ? Bedside.amber : Bedside.green)
+                    .foregroundStyle(cameraController.didMatchTarget ? Bedside.green : Bedside.amber)
             }
-            
+
             VStack(spacing: 10) {
                 Text("请拍摄指定目标")
                     .font(.system(size: 12, weight: .semibold))
@@ -573,22 +597,54 @@ struct RingingView: View {
                             .fill(Color.black.opacity(0.22))
                             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Bedside.accent.opacity(0.24), lineWidth: 0.8))
                     )
-                Text("先拍照确认你真的离开床边；视觉识别后续再接，不在这里装神弄鬼。")
+                Text("拍到目标才算通过；识别在本机完成，不把清晨狼狈照交给云端围观。")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
             }
-            
+
             if let image = cameraController.capturedImage {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .frame(height: 150)
+                    .frame(height: 132)
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Bedside.accent.opacity(0.28), lineWidth: 0.8))
                     .accessibilityLabel("已拍摄照片预览")
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("本地识别结果")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Bedside.subtext)
+                        Spacer()
+                        Text("\(Int(cameraController.recognitionConfidence * 100))%")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(cameraController.didMatchTarget ? Bedside.green : Bedside.amber)
+                    }
+                    Text(cameraController.recognitionSummary)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(cameraController.didMatchTarget ? Bedside.green : Bedside.subtext)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.84)
+                    if !cameraController.recognizedLabels.isEmpty {
+                        Text(cameraController.recognizedLabels.prefix(3).joined(separator: " · "))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Bedside.dim)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Bedside.surface.opacity(0.45))
+                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Bedside.sep, lineWidth: 0.7))
+                )
+
                 HStack(spacing: 12) {
                     Button { cameraController.retake() } label: {
                         Label("重拍", systemImage: "arrow.triangle.2.circlepath.camera")
@@ -602,12 +658,13 @@ struct RingingView: View {
                     Button { onCorrect() } label: {
                         Label("确认完成", systemImage: "checkmark")
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color.black.opacity(0.82))
+                            .foregroundStyle(cameraController.didMatchTarget ? Color.black.opacity(0.82) : Bedside.dim)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Capsule(style: .continuous).fill(Bedside.accent))
+                            .background(Capsule(style: .continuous).fill(cameraController.didMatchTarget ? Bedside.accent : Bedside.surface.opacity(0.52)))
                     }
                     .buttonStyle(.plain)
+                    .disabled(!cameraController.didMatchTarget)
                 }
             } else {
                 Button { cameraController.requestCameraAccessThenOpen() } label: {
@@ -619,9 +676,9 @@ struct RingingView: View {
                         .background(Capsule(style: .continuous).fill(Bedside.accent))
                 }
                 .buttonStyle(.plain)
-                
+
                 if cameraController.canMockCapture {
-                    Button { cameraController.mockCapture() } label: {
+                    Button { cameraController.mockCapture(targetLabel: target) } label: {
                         Label("模拟拍到目标", systemImage: "photo.fill")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Bedside.amber)
@@ -638,13 +695,13 @@ struct RingingView: View {
         .padding(.horizontal, 24)
         .sheet(isPresented: $cameraController.isShowingCamera) {
             CameraCaptureView(
-                onImage: { cameraController.accept(image: $0) },
+                onImage: { cameraController.accept(image: $0, targetLabel: target) },
                 onCancel: { cameraController.isShowingCamera = false }
             )
             .ignoresSafeArea()
         }
     }
-    
+
     private var memoryCard: some View {
         VStack(spacing: 18) {
             Text("记忆游戏")
@@ -653,7 +710,7 @@ struct RingingView: View {
             Text("按顺序点亮图案")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Bedside.subtext)
-            
+
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
                 ForEach(0..<4) { index in
                     Button {
@@ -679,7 +736,7 @@ struct RingingView: View {
                     .buttonStyle(.plain)
                 }
             }
-            
+
             if result == false {
                 Text("顺序不对，再来一次")
                     .font(.system(size: 14, weight: .medium))
@@ -690,12 +747,35 @@ struct RingingView: View {
         .ringingPanel(radius: 24)
         .padding(.horizontal, 24)
     }
-    
+
+    private var speechSubtitle: String {
+        let repeatCount = Alarm.clampedSpeechRepeatCount(record.speechRepeatCount)
+        if repeatCount <= 1 { return speechController.state.message }
+        return "第 \(min(speechCompletedCount + 1, repeatCount)) / \(repeatCount) 遍 · \(speechController.state.message)"
+    }
+
     private var currentQuestion: MathQuestion? {
         guard record.questions.indices.contains(questionIndex) else { return nil }
         return record.questions[questionIndex]
     }
-    
+
+    private func handleSpeechMatch() {
+        let repeatCount = Alarm.clampedSpeechRepeatCount(record.speechRepeatCount)
+        speechCompletedCount += 1
+        if speechCompletedCount >= repeatCount {
+            onCorrect()
+            return
+        }
+        let phrase = record.phrase ?? "我已经醒了，今天也要准时开始"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+            if Self.debugSpeechNoAutoStart {
+                speechController.prepareMock(phrase: phrase, onComplete: handleSpeechMatch)
+            } else {
+                speechController.start(phrase: phrase, onComplete: handleSpeechMatch)
+            }
+        }
+    }
+
     private func checkAnswer() {
         let correct = Int(answer) == currentQuestion?.answer
         withAnimation(.spring()) { result = correct }

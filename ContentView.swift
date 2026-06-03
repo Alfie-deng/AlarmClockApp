@@ -1,8 +1,55 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject var mgr: AlarmManager
     @State private var tab = 0
+
+    init() {
+        Self.configureSystemTabBar()
+    }
+
+    private static func configureSystemTabBar() {
+        let accent = UIColor(red: 1.0, green: 144.0 / 255.0, blue: 34.0 / 255.0, alpha: 1.0)
+        let unselected = UIColor.white.withAlphaComponent(0.82)
+
+        let tabBar = UITabBar.appearance()
+        tabBar.itemPositioning = .centered
+        tabBar.itemWidth = 92
+        tabBar.itemSpacing = 18
+        tabBar.tintColor = accent
+        tabBar.unselectedItemTintColor = unselected
+
+        let item = UITabBarItem.appearance()
+        item.setTitleTextAttributes([
+            .font: UIFont.systemFont(ofSize: 12, weight: .semibold),
+            .foregroundColor: unselected
+        ], for: .normal)
+        item.setTitleTextAttributes([
+            .font: UIFont.systemFont(ofSize: 12, weight: .bold),
+            .foregroundColor: accent
+        ], for: .selected)
+
+        let itemAppearance = UITabBarItemAppearance()
+        itemAppearance.normal.iconColor = unselected
+        itemAppearance.normal.titleTextAttributes = [
+            .font: UIFont.systemFont(ofSize: 12, weight: .semibold),
+            .foregroundColor: unselected
+        ]
+        itemAppearance.selected.iconColor = accent
+        itemAppearance.selected.titleTextAttributes = [
+            .font: UIFont.systemFont(ofSize: 12, weight: .bold),
+            .foregroundColor: accent
+        ]
+
+        let appearance = UITabBarAppearance()
+        appearance.configureWithTransparentBackground()
+        appearance.stackedLayoutAppearance = itemAppearance
+        appearance.inlineLayoutAppearance = itemAppearance
+        appearance.compactInlineLayoutAppearance = itemAppearance
+        tabBar.standardAppearance = appearance
+        tabBar.scrollEdgeAppearance = appearance
+    }
 
     private var debugScreen: String? {
         guard let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--debugScreen"),
@@ -138,76 +185,28 @@ struct ContentView: View {
     }
 
     private var appShell: some View {
-        ZStack {
-            Bedside.bg.ignoresSafeArea()
-            currentTabView
-
-            VStack {
-                Spacer()
-                GlassTabBar(tab: $tab)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 17)
-            }
-            .ignoresSafeArea(.keyboard)
-        }
-    }
-
-    @ViewBuilder
-    private var currentTabView: some View {
-        switch tab {
-        case 0: HomeView()
-        case 1: AlarmTabView()
-        default: StatsView()
-        }
-    }
-
-}
-
-private struct GlassTabBar: View {
-    @Binding var tab: Int
-
-    var body: some View {
-        HStack(spacing: 8) {
-            tabBtn(index: 0, icon: "house.fill", label: "首页")
-            tabBtn(index: 1, icon: "alarm.fill", label: "闹钟")
-            tabBtn(index: 2, icon: "chart.bar.fill", label: "统计")
-        }
-        .padding(6)
-        .frame(height: 70)
-        .background { LiquidGlassCapsule(style: .hero, interactive: true) }
-        .shadow(color: .black.opacity(0.42), radius: 20, x: 0, y: 12)
-        .shadow(color: Bedside.accent.opacity(0.12), radius: 18, x: 0, y: 4)
-    }
-
-    private func tabBtn(index: Int, icon: String, label: String) -> some View {
-        let selected = tab == index
-
-        return Button {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                tab = index
-            }
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 21, weight: selected ? .semibold : .regular))
-                Text(label)
-                    .font(.system(size: 11, weight: selected ? .semibold : .medium))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .foregroundStyle(selected ? Bedside.amber : Bedside.text.opacity(0.78))
-            .background {
-                if selected {
-                    Capsule(style: .continuous)
-                        .fill(Bedside.amber.opacity(0.15))
-                        .overlay(Capsule(style: .continuous).stroke(Bedside.amber.opacity(0.23), lineWidth: 0.7))
+        TabView(selection: $tab) {
+            HomeView()
+                .tag(0)
+                .tabItem {
+                    Label("首页", systemImage: "house.fill")
                 }
-            }
-            .contentShape(Capsule(style: .continuous))
+
+            AlarmTabView()
+                .tag(1)
+                .tabItem {
+                    Label("闹钟", systemImage: "alarm.fill")
+                }
+
+            StatsView(sessions: mgr.wakeSessions)
+                .tag(2)
+                .tabItem {
+                    Label("统计", systemImage: "chart.bar.fill")
+                }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .tint(Color(red: 1.0, green: 144.0 / 255.0, blue: 34.0 / 255.0))
     }
+
 }
 
 private extension ChallengeType {
@@ -216,6 +215,7 @@ private extension ChallengeType {
         case "math": return .math
         case "shake": return .shake
         case "speak": return .speak
+        case "photo": return .photo
         case "memory": return .memory
         default: return nil
         }
@@ -241,9 +241,22 @@ private struct AlarmTabView: View {
                             .listRowSeparator(.hidden)
                     }
 
+                    Section {
+                        AlarmReliabilityCard(
+                            alarm: mgr.nextEnabledAlarm,
+                            notificationStatus: mgr.notificationStatus,
+                            pendingNotificationCount: mgr.pendingNotificationCount,
+                            nextPendingNotificationDate: mgr.nextPendingNotificationDate,
+                            onRefresh: { mgr.refreshAlarmDeliverySnapshot() }
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 0, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+
                     if mgr.alarms.isEmpty {
                         Section {
-                            AlarmEmptyCard(onAdd: { showAddAlarm = true })
+                            AlarmEmptyCard()
                                 .listRowInsets(EdgeInsets(top: 18, leading: 20, bottom: 0, trailing: 20))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
@@ -272,9 +285,6 @@ private struct AlarmTabView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .safeAreaInset(edge: .bottom) {
-                    Color.clear.frame(height: 104)
-                }
             }
         }
         .sheet(item: $editAlarm) { alarm in
@@ -284,6 +294,10 @@ private struct AlarmTabView: View {
         .sheet(isPresented: $showAddAlarm) {
             AlarmSettingView()
                 .presentationDetents([.large])
+        }
+        .onAppear {
+            mgr.refreshNotificationStatus()
+            mgr.refreshAlarmDeliverySnapshot()
         }
     }
 }
@@ -320,28 +334,25 @@ private struct AlarmListHeader: View {
 }
 
 private struct AlarmEmptyCard: View {
-    let onAdd: () -> Void
-
     var body: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 14) {
             BedsideIconBadge(systemName: "alarm.fill")
-                .scaleEffect(1.18)
+                .scaleEffect(1.12)
 
             VStack(spacing: 6) {
                 Text("暂无闹钟")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Bedside.text)
-                Text("添加一个起床挑战，别把明天交给命运抽签")
+                Text("用右上角 + 添加起床挑战")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
             }
-
-            AddAlarmButton(action: onAdd)
-                .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 34)
+        .padding(.vertical, 28)
         .background { LiquidGlassPanel(radius: 20, style: .hero) }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("暂无闹钟，请使用右上角新增闹钟")
     }
 }
 

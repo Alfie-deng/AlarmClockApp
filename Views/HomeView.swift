@@ -8,25 +8,20 @@ struct HomeView: View {
     @State private var sleepCopySeed = Int.random(in: 0...10_000)
     private let horizontalPadding: CGFloat = 28
     private let contentMaxWidth: CGFloat = 384
-    
-    private var next: Alarm? {
-        mgr.alarms
-            .filter(\.isEnabled)
-            .sorted { $0.nextOccurrence() < $1.nextOccurrence() }
-            .first
-    }
-    
+
+    private var next: Alarm? { mgr.nextEnabledAlarm }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
                 BedroomBackdrop()
                     .ignoresSafeArea()
-                
+
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
                         Color.clear
-                            .frame(height: 286)
-                        
+                            .frame(height: 304)
+
                         glassCardStack
                     }
                     .frame(maxWidth: contentMaxWidth)
@@ -34,7 +29,7 @@ struct HomeView: View {
                     .padding(.horizontal, horizontalPadding)
                     .padding(.bottom, 28)
                 }
-                
+
                 HeaderBar()
                     .frame(maxWidth: contentMaxWidth)
                     .frame(maxWidth: .infinity)
@@ -54,18 +49,18 @@ struct HomeView: View {
             sleepCopySeed = Int.random(in: 0...10_000)
         }
     }
-    
+
     @ViewBuilder
     private var glassCardStack: some View {
         cardStackContent
     }
-    
+
     private var cardStackContent: some View {
         VStack(spacing: 18) {
             if mgr.notificationStatus.isBlockingAlarmDelivery {
                 NotificationWarningCard()
             }
-            
+
             AlarmHeroCard(
                 alarm: next,
                 onTap: {
@@ -118,11 +113,11 @@ private struct BedroomBackdrop: View {
                         endPoint: .trailing
                     )
                 )
-            
+
             GeometryReader { proxy in
                 let width = proxy.size.width
                 let top = proxy.safeAreaInsets.top
-                
+
                 ZStack(alignment: .top) {
                     // 资产图负责真实空间关系；这里仅补一层暖光，让卡片和灯连成同一个夜景。
                     Ellipse()
@@ -141,11 +136,11 @@ private struct BedroomBackdrop: View {
                         .frame(width: 300, height: 150)
                         .blur(radius: 30)
                         .offset(x: width * 0.22 + imageOffset.width, y: top + 210 + imageOffset.height)
-                    
+
                     BedroomVignette()
                 }
             }
-            
+
             LinearGradient(
                 colors: [
                     .black.opacity(0.0),
@@ -172,7 +167,7 @@ private struct BedroomVignette: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            
+
             HStack {
                 LinearGradient(
                     colors: [.black.opacity(0.62), .clear],
@@ -203,7 +198,7 @@ private struct HeaderBar: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
             }
-            
+
             Spacer()
         }
     }
@@ -213,8 +208,8 @@ private struct AlarmHeroCard: View {
     let alarm: Alarm?
     let onTap: () -> Void
     let onCancel: () -> Void
-    
-    private var timeText: String { alarm?.formattedTime ?? "--:--" }
+
+    private var timeText: String { alarm?.formattedTime ?? "" }
     private var periodText: String { alarm?.formattedPeriod ?? "" }
     private var labelText: String {
         guard let alarm else { return "还没有开启的闹钟" }
@@ -225,24 +220,28 @@ private struct AlarmHeroCard: View {
     private var challengeText: String { "\(alarm?.challengeType.rawValue ?? "数学题")挑战" }
     private var challengeIcon: String { alarm?.challengeType.icon ?? ChallengeType.math.icon }
     private var accessibilitySummary: String {
-        [labelText, dateText, "\(timeText) \(periodText)", challengeText, statusText]
+        [labelText, dateText, "\(timeText) \(periodText)", alarm == nil ? "添加闹钟" : challengeText, statusText]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: "，")
     }
-    
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             LiquidGlassPanel(radius: 22, style: .hero, interactive: alarm != nil)
                 .allowsHitTesting(false)
-            
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    Text(alarm == nil ? "添加第一个闹钟" : "下一个闹钟")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Bedside.text.opacity(0.94))
-                    
-                    if alarm != nil {
+
+            if alarm == nil {
+                emptyHeroContent
+                    .padding(20)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Text("下一个闹钟")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Bedside.text.opacity(0.94))
+
                         Text(statusText)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Bedside.green)
@@ -254,35 +253,30 @@ private struct AlarmHeroCard: View {
                                     .overlay(Capsule().stroke(Bedside.green.opacity(0.18), lineWidth: 0.6))
                             )
                     }
-                    
-                }
-                
-                HStack(alignment: .lastTextBaseline, spacing: 8) {
-                    Text(timeText)
-                        .font(.system(size: 116, weight: .light, design: .rounded))
-                        .monospacedDigit()
-                        .minimumScaleFactor(0.62)
-                        .glow(Bedside.amber)
-                    
-                    Text(periodText)
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(Bedside.amber.opacity(0.86))
-                        .padding(.bottom, 20)
-                }
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    if !dateText.isEmpty {
-                        Text(dateText)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(Bedside.subtext)
+
+                    HStack(alignment: .lastTextBaseline, spacing: 8) {
+                        HeroTimeText(timeText)
+                            .minimumScaleFactor(0.62)
+                            .glow(Bedside.amber)
+
+                        Text(periodText)
+                            .font(.system(size: 22, weight: .medium))
+                            .foregroundStyle(Bedside.amber.opacity(0.86))
+                            .padding(.bottom, 20)
                     }
-                    
-                    HStack(alignment: .center, spacing: 8) {
-                        heroPill(challengeText, icon: challengeIcon)
-                        
-                        Spacer()
-                        
-                        if alarm != nil {
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        if !dateText.isEmpty {
+                            Text(dateText)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Bedside.subtext)
+                        }
+
+                        HStack(alignment: .center, spacing: 8) {
+                            heroPill(challengeText, icon: challengeIcon)
+
+                            Spacer()
+
                             Button(action: onCancel) {
                                 heroPill("取消", icon: "bell.slash.fill")
                             }
@@ -291,9 +285,9 @@ private struct AlarmHeroCard: View {
                         }
                     }
                 }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 258)
@@ -302,7 +296,29 @@ private struct AlarmHeroCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
     }
-    
+
+    private var emptyHeroContent: some View {
+        VStack(spacing: 16) {
+            Spacer(minLength: 4)
+
+            EmptyHeroAddButton()
+
+            VStack(spacing: 7) {
+                Text("添加第一个闹钟")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(Bedside.text)
+
+                Text("向赖床的自己发起挑战")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Bedside.subtext)
+            }
+            .multilineTextAlignment(.center)
+
+            Spacer(minLength: 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private func heroPill(_ title: String, icon: String) -> some View {
         Label(title, systemImage: icon)
             .font(.system(size: 14, weight: .semibold))
@@ -319,15 +335,67 @@ private struct AlarmHeroCard: View {
 
 }
 
+private struct EmptyHeroAddButton: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [Bedside.accent.opacity(0.34), Bedside.amber.opacity(0.16)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(Circle().stroke(Bedside.accent.opacity(0.28), lineWidth: 1))
+                .shadow(color: Bedside.accent.opacity(0.24), radius: 13, x: 0, y: 6)
+                .shadow(color: .black.opacity(0.38), radius: 10, x: 0, y: 8)
+
+            Image(systemName: "plus")
+                .font(.system(size: 40, weight: .black, design: .rounded))
+                .foregroundStyle(Bedside.amber)
+                .shadow(color: .black.opacity(0.72), radius: 2.5, x: 0, y: 2)
+                .shadow(color: Bedside.accent.opacity(0.72), radius: 7, x: 0, y: 0)
+        }
+        .frame(width: 72, height: 72)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct HeroTimeText: View {
+    let value: String
+
+    init(_ value: String) {
+        self.value = value
+    }
+
+    var body: some View {
+        Group {
+            if value == "--:--" {
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    Text("--")
+                    Text(":")
+                        .baselineOffset(7)
+                    Text("--")
+                }
+            } else {
+                Text(value)
+            }
+        }
+        .font(.system(size: 116, weight: .light, design: .rounded))
+        .monospacedDigit()
+        .accessibilityLabel(value)
+    }
+}
+
 private struct WakeCountdownBatteryCard: View {
     let alarm: Alarm?
     let copySeed: Int
+    @State private var now = Date()
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { context in
-            let state = batteryState(at: context.date)
+        let state = batteryState(at: now)
 
-            VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Label("睡眠余额", systemImage: "moon.zzz.fill")
                         .font(.system(size: 13, weight: .semibold))
@@ -357,7 +425,7 @@ private struct WakeCountdownBatteryCard: View {
                         Capsule(style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: [Bedside.amber, Bedside.accent, Color(hex: "FF8D35")],
+                                    colors: [Bedside.accent, Bedside.amber, Bedside.accent],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
@@ -386,11 +454,22 @@ private struct WakeCountdownBatteryCard: View {
                 }
                 .frame(height: 52)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 18)
-            .background { LiquidGlassPanel(radius: 18, style: .card) }
-            .accessibilityElement(children: .combine)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 18)
+        .background { LiquidGlassPanel(radius: 18, style: .card) }
+        .accessibilityElement(children: .combine)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(secondsUntilNextMinute(from: now)))
+                guard !Task.isCancelled else { return }
+                now = Date()
+            }
         }
+    }
+
+    private func secondsUntilNextMinute(from date: Date) -> Int {
+        let second = Calendar.current.component(.second, from: date)
+        return max(1, 60 - second)
     }
 
     private func batteryState(at date: Date) -> BatteryState {
@@ -398,7 +477,14 @@ private struct WakeCountdownBatteryCard: View {
             return BatteryState(
                 progress: 0,
                 remainingText: "未启用",
-                copy: pick(["没有启用闹钟，明天靠命运叫醒你？", "今天暂时没有处刑安排", "闹钟空着，人生开始自由落体"])
+                copy: pick([
+                    "没有启用闹钟，明天靠命运叫醒你？",
+                    "今天没有闹钟值班，明早全靠自觉",
+                    "暂时没有闹钟，睡眠进入自由模式",
+                    "没定闹钟，明早请自求多福",
+                    "被窝已获得明早的主导权",
+                    "明天的起床计划还在随缘"
+                ])
             )
         }
 
@@ -423,21 +509,18 @@ private struct WakeCountdownBatteryCard: View {
             ]))
         case 4..<6:
             return BatteryState(progress: progress, remainingText: remainingText, copy: pick([
-                "时间开始紧了，被窝在等你投降",
-                "再熬就不是晚睡，是主动削弱明天",
-                "睡吧，明早别和闹钟打官司"
+                "时间开始紧了，被窝在等你投降"
             ]))
         case 2..<4:
             return BatteryState(progress: progress, remainingText: remainingText, copy: pick([
-                "这点时间，睡了总比不睡强",
-                "明早会醒，但精神可能是散装的",
-                "赶紧睡，别把明天开局打成残血"
+                "这点时间，睡总比不睡强",
+                "明早会醒，但精神可能是散装的"
             ]))
         default:
             return BatteryState(progress: progress, remainingText: remainingText, copy: pick([
-                "快到了，别指望睡眠医学救你",
                 "闹钟快开庭了，请准备出庭",
-                "现在闭眼，属于战术性昏迷"
+                "现在闭眼，属于战术性昏迷",
+                "这个点，能睡一点是一点"
             ]))
         }
     }
@@ -478,18 +561,6 @@ private struct NotificationWarningCard: View {
         }
         .padding(16)
         .background { LiquidGlassPanel(radius: 18, style: .card) }
-    }
-}
-
-
-private extension UNAuthorizationStatus {
-    var isBlockingAlarmDelivery: Bool {
-        switch self {
-        case .denied, .ephemeral:
-            return true
-        default:
-            return false
-        }
     }
 }
 

@@ -11,6 +11,7 @@
 		1942FED3A74DCD75CBDFE921979B09B7 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A28B716E502F14B61CF3C6891EB7AB /* DesignSystem.swift */; };
 		25A04C0F0350E6337EB738165ED6FF65 /* SpeechChallengeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8702B1DD4C2C7D17B16CE95F454EC21 /* SpeechChallengeController.swift */; };
 		51854E397BA58B9C62D785D8EAA7436E /* ShakeChallengeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFDE886DCF10532FE26C3E0EEE30479D /* ShakeChallengeController.swift */; };
+		5451F7CAF2D2EDC9270724A89149BC39 /* RefreshRateProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = A68F81CBFF07F711480041487A711FB4 /* RefreshRateProbe.swift */; };
 		6DD05BB14432FC743C8AC86C3C4A2A55 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C043344985D1CB63753A8ABA16C7E22A /* StatsView.swift */; };
 		938E42F30AEDAD17148D24C3317A5B09 /* ShakeChallengeTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D636589DE2D9D5EFE839E01BC618284E /* ShakeChallengeTracker.swift */; };
 		9611967A3D5F58948CC517F295B8A063 /* AlarmSettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56536A6FA5781BFF1F55D7776B3C68D /* AlarmSettingView.swift */; };
@@ -45,6 +46,7 @@
 		5A1ADE785D1C84D9C3C17F1EA71C0E75 /* RingingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingingView.swift; sourceTree = "<group>"; };
 		7911DF7CFA9564C7EDD6228103069699 /* SuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessView.swift; sourceTree = "<group>"; };
 		9B79004E2E5AF294A7F6DB6E6AAA01FA /* AlarmManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmManager.swift; sourceTree = "<group>"; };
+		A68F81CBFF07F711480041487A711FB4 /* RefreshRateProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshRateProbe.swift; sourceTree = "<group>"; };
 		ADFB939DA4228BA465478686E855D956 /* AlarmClockApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmClockApp.swift; sourceTree = "<group>"; };
 		B04CB229CFA41C73AEFB4F671D287A88 /* AlarmLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmLogicTests.swift; sourceTree = "<group>"; };
 		C043344985D1CB63753A8ABA16C7E22A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
@@ -87,6 +89,7 @@
 			children = (
 				9B79004E2E5AF294A7F6DB6E6AAA01FA /* AlarmManager.swift */,
 				16092AF61CA798D94DC8D893FB9E3BF2 /* CameraChallengeController.swift */,
+				A68F81CBFF07F711480041487A711FB4 /* RefreshRateProbe.swift */,
 				CFDE886DCF10532FE26C3E0EEE30479D /* ShakeChallengeController.swift */,
 				D636589DE2D9D5EFE839E01BC618284E /* ShakeChallengeTracker.swift */,
 				C8702B1DD4C2C7D17B16CE95F454EC21 /* SpeechChallengeController.swift */,
@@ -237,6 +240,7 @@
 				A38ADE6D96DD6529012DABB4505B5591 /* ContentView.swift in Sources */,
 				1942FED3A74DCD75CBDFE921979B09B7 /* DesignSystem.swift in Sources */,
 				AF194B44AD9E00366B542EC979041A07 /* HomeView.swift in Sources */,
+				5451F7CAF2D2EDC9270724A89149BC39 /* RefreshRateProbe.swift in Sources */,
 				078ADC658366481856542152E03BFA40 /* RingingView.swift in Sources */,
 				51854E397BA58B9C62D785D8EAA7436E /* ShakeChallengeController.swift in Sources */,
 				938E42F30AEDAD17148D24C3317A5B09 /* ShakeChallengeTracker.swift in Sources */,
@@ -278,18 +282,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = D4SUBHNYW9;
-				ENABLE_TESTABILITY = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "挑战闹钟";
-				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄起床挑战指定目标照片。";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于采集念语句挑战的语音。";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于识别你是否念出了起床挑战指定语句。";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				ENABLE_TESTABILITY = NO;
+				INFOPLIST_FILE = Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.alfie.AlarmClockApp;
 				PRODUCT_NAME = AlarmClockApp;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -316,16 +315,11 @@
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = D4SUBHNYW9;
 				ENABLE_TESTABILITY = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "挑战闹钟";
-				INFOPLIST_KEY_NSCameraUsageDescription = "用于拍摄起床挑战指定目标照片。";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于采集念语句挑战的语音。";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "用于识别你是否念出了起床挑战指定语句。";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_FILE = Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.alfie.AlarmClockApp;
 				PRODUCT_NAME = AlarmClockApp;
+				SWIFT_COMPILATION_MODE = singlefile;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;

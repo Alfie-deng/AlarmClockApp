@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 // MARK: - Dark Bedside 色板
 extension Color {
@@ -22,8 +23,8 @@ enum Bedside {
     static let surface  = Color(hex: "15181E")
     static let card     = Color(hex: "1B1D22").opacity(0.62)
     static let glass    = Color(hex: "202127").opacity(0.48)
-    static let accent   = Color(hex: "FFAA45")
-    static let amber    = Color(hex: "FFD08A")
+    static let accent   = Color(hex: "FFB04A")
+    static let amber    = Color(hex: "FFB04A")
     static let text     = Color(hex: "F6EFE5")
     static let subtext  = Color(hex: "B8AAA0")
     static let dim      = Color(hex: "6F737A")
@@ -40,7 +41,7 @@ enum BedsideGlassStyle {
 
 struct BedsideAmbientBackground: View {
     var glow: Bool = true
-    
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -52,14 +53,14 @@ struct BedsideAmbientBackground: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            
+
             if glow {
                 Circle()
                     .fill(Bedside.accent.opacity(0.16))
                     .frame(width: 220, height: 220)
                     .blur(radius: 42)
                     .offset(x: 96, y: -96)
-                
+
                 Circle()
                     .fill(Bedside.amber.opacity(0.08))
                     .frame(width: 260, height: 260)
@@ -78,7 +79,7 @@ struct BedsideTopBar: View {
     var trailingTitle: String? = nil
     var leadingAction: (() -> Void)? = nil
     var trailingAction: (() -> Void)? = nil
-    
+
     var body: some View {
         HStack(alignment: subtitle == nil ? .center : .top) {
             if let leadingTitle {
@@ -87,7 +88,7 @@ struct BedsideTopBar: View {
                     .foregroundStyle(Bedside.accent)
                     .frame(minWidth: 54, alignment: .leading)
             }
-            
+
             VStack(alignment: leadingTitle == nil ? .leading : .center, spacing: 5) {
                 Text(title)
                     .font(.system(size: leadingTitle == nil ? 24 : 17, weight: .bold))
@@ -99,7 +100,7 @@ struct BedsideTopBar: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: leadingTitle == nil ? .leading : .center)
-            
+
             if let trailingTitle {
                 Button(trailingTitle) { trailingAction?() }
                     .font(.system(size: 16, weight: .semibold))
@@ -115,7 +116,7 @@ struct BedsideTopBar: View {
 struct BedsideIconBadge: View {
     let systemName: String
     var color: Color = Bedside.accent
-    
+
     var body: some View {
         Image(systemName: systemName)
             .font(.system(size: 16, weight: .semibold))
@@ -132,7 +133,7 @@ struct BedsideIconBadge: View {
 struct BedsidePill: View {
     let text: String
     var icon: String? = nil
-    
+
     var body: some View {
         HStack(spacing: 6) {
             if let icon {
@@ -175,14 +176,14 @@ extension View {
 struct DarkCard: ViewModifier {
     var radius: CGFloat = 18
     var style: BedsideGlassStyle = .card
-    
+
     private var topOpacity: Double {
         switch style {
         case .card: return 0.82
         case .hero: return 0.76
         }
     }
-    
+
     func body(content: Content) -> some View {
         content
             .background(
@@ -204,7 +205,7 @@ struct DarkCard: ViewModifier {
                     .shadow(color: Bedside.accent.opacity(style == .hero ? 0.16 : 0.08), radius: 18, x: 0, y: 8)
             )
     }
-    
+
     private var warmGlassBloom: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .fill(
@@ -221,7 +222,7 @@ struct DarkCard: ViewModifier {
             )
             .blendMode(.screen)
     }
-    
+
     private var glassStroke: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .overlay(
@@ -267,7 +268,7 @@ extension View {
 // 暗色列表组
 struct DarkGroup<Content: View>: View {
     @ViewBuilder let content: Content
-    
+
     var body: some View {
         VStack(spacing: 0) { content }
             .darkCard(radius: 16, style: .card)
@@ -277,14 +278,14 @@ struct DarkGroup<Content: View>: View {
 struct DarkGlassPanel: View {
     var radius: CGFloat = 18
     var style: BedsideGlassStyle = .card
-    
+
     private var topOpacity: Double {
         switch style {
         case .card: return 0.88
         case .hero: return 0.82
         }
     }
-    
+
     var body: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .fill(
@@ -339,7 +340,7 @@ struct LiquidGlassPanel: View {
     var radius: CGFloat = 18
     var style: BedsideGlassStyle = .card
     var interactive: Bool = false
-    
+
     private var tint: Color {
         switch style {
         case .card:
@@ -348,7 +349,7 @@ struct LiquidGlassPanel: View {
             return Color(hex: "1F1812").opacity(0.10)
         }
     }
-    
+
     var body: some View {
         if #available(iOS 26.0, *) {
             nativeGlass
@@ -356,7 +357,7 @@ struct LiquidGlassPanel: View {
             DarkGlassPanel(radius: radius, style: style)
         }
     }
-    
+
     @available(iOS 26.0, *)
     private var nativeGlass: some View {
         baseGlass
@@ -366,7 +367,7 @@ struct LiquidGlassPanel: View {
             .shadow(color: .black.opacity(style == .hero ? 0.42 : 0.32), radius: style == .hero ? 24 : 16, x: 0, y: style == .hero ? 16 : 10)
             .shadow(color: Bedside.amber.opacity(style == .hero ? 0.16 : 0.08), radius: style == .hero ? 20 : 12, x: 0, y: 6)
     }
-    
+
     @available(iOS 26.0, *)
     @ViewBuilder
     private var baseGlass: some View {
@@ -380,7 +381,7 @@ struct LiquidGlassPanel: View {
                 .glassEffect(.regular.tint(tint), in: .rect(cornerRadius: radius))
         }
     }
-    
+
     private var depthScrim: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .fill(
@@ -396,7 +397,7 @@ struct LiquidGlassPanel: View {
             )
             .blendMode(.softLight)
     }
-    
+
     private var highlightStroke: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .stroke(
@@ -414,7 +415,7 @@ struct LiquidGlassPanel: View {
             )
             .blendMode(.screen)
     }
-    
+
     private var topEdgeShine: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .strokeBorder(
@@ -443,7 +444,7 @@ struct LiquidGlassPanel: View {
 struct LiquidGlassCapsule: View {
     var style: BedsideGlassStyle = .card
     var interactive: Bool = false
-    
+
     private var tint: Color {
         switch style {
         case .card:
@@ -452,7 +453,7 @@ struct LiquidGlassCapsule: View {
             return Color(hex: "1F1812").opacity(0.09)
         }
     }
-    
+
     var body: some View {
         if #available(iOS 26.0, *) {
             nativeGlass
@@ -462,7 +463,7 @@ struct LiquidGlassCapsule: View {
                 .overlay(Capsule(style: .continuous).stroke(Bedside.sep, lineWidth: 0.7))
         }
     }
-    
+
     @available(iOS 26.0, *)
     @ViewBuilder
     private var nativeGlass: some View {
@@ -478,7 +479,7 @@ struct LiquidGlassCapsule: View {
                 .overlay { edgeHighlight }
         }
     }
-    
+
     private var edgeHighlight: some View {
         Capsule(style: .continuous)
             .stroke(
@@ -495,5 +496,117 @@ struct LiquidGlassCapsule: View {
                 lineWidth: 0.75
             )
             .blendMode(.screen)
+    }
+}
+
+struct AlarmReliabilityCard: View {
+    let alarm: Alarm?
+    let notificationStatus: UNAuthorizationStatus
+    let pendingNotificationCount: Int
+    let nextPendingNotificationDate: Date?
+    let onRefresh: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            BedsideIconBadge(systemName: statusIcon, color: statusColor)
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Text("响铃体检")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Bedside.text)
+                    Text(statusText)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(statusColor)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(statusColor.opacity(0.12))
+                                .overlay(Capsule().stroke(statusColor.opacity(0.18), lineWidth: 0.6))
+                        )
+                }
+
+                Text(detailText)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.86)
+            }
+            Spacer()
+            Button(action: onRefresh) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Bedside.amber)
+                    .frame(width: 32, height: 32)
+                    .background { LiquidGlassCapsule(style: .card, interactive: true) }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("刷新响铃体检")
+        }
+        .padding(16)
+        .background { LiquidGlassPanel(radius: 18, style: .card) }
+    }
+
+    private var statusIcon: String {
+        if notificationStatus.isBlockingAlarmDelivery { return "bell.slash.fill" }
+        if alarm == nil { return "bell.badge.fill" }
+        return pendingNotificationCount > 0 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var statusColor: Color {
+        if notificationStatus.isBlockingAlarmDelivery { return Bedside.red }
+        if alarm == nil { return Bedside.amber }
+        return pendingNotificationCount > 0 ? Bedside.green : Bedside.red
+    }
+
+    private var statusText: String {
+        if notificationStatus.isBlockingAlarmDelivery { return "未通过" }
+        if alarm == nil { return "待设置" }
+        return pendingNotificationCount > 0 ? "正常" : "待确认"
+    }
+
+    private var detailText: String {
+        guard alarm != nil else {
+            return "暂无启用闹钟，添加后会检查系统通知排班。"
+        }
+        guard notificationStatus.allowsAlarmDelivery else {
+            return "系统通知未放行，闹钟可能不会准时响。"
+        }
+        guard pendingNotificationCount > 0 else {
+            return "有启用闹钟，但暂未检测到待触发通知。"
+        }
+        if let nextPendingNotificationDate {
+            return "已排班 \(pendingNotificationCount) 条，下一次 \(AlarmReliabilityDateFormatters.time.string(from: nextPendingNotificationDate))。"
+        }
+        return "已排班 \(pendingNotificationCount) 条，等待系统返回下一次时间。"
+    }
+}
+
+private enum AlarmReliabilityDateFormatters {
+    static let time: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_Hans_CN")
+        formatter.dateFormat = "M月d日 HH:mm"
+        return formatter
+    }()
+}
+
+extension UNAuthorizationStatus {
+    var isBlockingAlarmDelivery: Bool {
+        switch self {
+        case .denied, .ephemeral:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var allowsAlarmDelivery: Bool {
+        switch self {
+        case .authorized, .provisional:
+            return true
+        default:
+            return false
+        }
     }
 }

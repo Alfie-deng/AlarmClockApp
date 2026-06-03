@@ -20,6 +20,15 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>用于拍摄起床挑战指定目标照片。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>用于采集念语句挑战的语音。</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>用于识别你是否念出了起床挑战指定语句。</string>
+
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

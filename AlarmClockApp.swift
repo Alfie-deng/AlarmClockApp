@@ -48,6 +48,7 @@ struct AlarmClockApp: App {
                 .environmentObject(alarmManager)
                 .onAppear {
                     appDelegate.alarmManager = alarmManager
+                    RefreshRateProbe.startIfRequested()
                 }
         }
     }
