@@ -46,7 +46,7 @@ struct RingingIntroView: View {
                         Text("完成挑战才能关闭闹钟")
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(Bedside.text)
-                        Text("滑动进入数学题，让大脑先开机")
+                        Text("开始挑战，让大脑先开机")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Bedside.subtext)
                     }
@@ -80,7 +80,7 @@ struct RingingIntroView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "moon.zzz.fill")
                             .font(.system(size: 13))
-                        Text("稍后提醒 5 分钟")
+                        Text("稍后提醒")
                             .font(.system(size: 14, weight: .medium))
                     }
                     .foregroundColor(Bedside.dim)
@@ -114,7 +114,8 @@ struct RingingView: View {
         self.record = record
         self.onCorrect = onCorrect
         self.onSnooze = onSnooze
-        _shakeController = StateObject(wrappedValue: ShakeChallengeController(requiredCount: record.shakeRequiredCount))
+        let requiredCount = ProcessInfo.processInfo.arguments.contains("--debugShakeRequiredCount") ? Self.debugShakeRequiredCount : record.shakeRequiredCount
+        _shakeController = StateObject(wrappedValue: ShakeChallengeController(requiredCount: requiredCount))
     }
 
     private var time: String {
@@ -231,7 +232,7 @@ struct RingingView: View {
                 Text("\(record.type.rawValue)挑战暂未开放")
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(Bedside.text)
-                Text("当前正式可用的是数学题挑战。这个模式还需要接入真实能力后再开放。")
+                Text("当前正式可用的是数学题、摇手机和拍照挑战。这个模式还需要接入真实能力后再开放。")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
                     .multilineTextAlignment(.center)
@@ -564,44 +565,29 @@ struct RingingView: View {
 
     private var photoCard: some View {
         let target = record.targetPhotoLabel ?? "床头灯"
-        return VStack(spacing: 20) {
+        let statusText = cameraController.didMatchTarget ? "已识别到目标" : cameraController.state.message
+        let statusColor = cameraController.didMatchTarget ? Bedside.green : (cameraController.capturedImage == nil ? Bedside.subtext : Bedside.amber)
+
+        return VStack(spacing: 18) {
             HStack(alignment: .center, spacing: 12) {
                 BedsideIconBadge(systemName: "camera.viewfinder")
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("拍照挑战")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Bedside.text)
-                    Text(cameraController.state.message)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Bedside.subtext)
-                }
-                Spacer()
-                Image(systemName: cameraController.didMatchTarget ? "checkmark.circle.fill" : "camera.fill")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(cameraController.didMatchTarget ? Bedside.green : Bedside.amber)
+                Text("拍照挑战")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Bedside.text)
+                Spacer(minLength: 0)
             }
 
-            VStack(spacing: 10) {
-                Text("请拍摄指定目标")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Bedside.subtext)
-                    .textCase(.uppercase)
-                    .tracking(1.2)
+            VStack(spacing: 12) {
                 Text(target)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 32, weight: .bold))
                     .foregroundColor(Bedside.text)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 14)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(Color.black.opacity(0.22))
                             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Bedside.accent.opacity(0.24), lineWidth: 0.8))
                     )
-                Text("拍到目标才算通过；识别在本机完成，不把清晨狼狈照交给云端围观。")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Bedside.subtext)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(3)
             }
 
             if let image = cameraController.capturedImage {
@@ -614,35 +600,22 @@ struct RingingView: View {
                     .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Bedside.accent.opacity(0.28), lineWidth: 0.8))
                     .accessibilityLabel("已拍摄照片预览")
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("本地识别结果")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Bedside.subtext)
-                        Spacer()
-                        Text("\(Int(cameraController.recognitionConfidence * 100))%")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(cameraController.didMatchTarget ? Bedside.green : Bedside.amber)
-                    }
-                    Text(cameraController.recognitionSummary)
+                HStack(spacing: 8) {
+                    Image(systemName: cameraController.didMatchTarget ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath.camera")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(cameraController.didMatchTarget ? Bedside.green : Bedside.subtext)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.84)
-                    if !cameraController.recognizedLabels.isEmpty {
-                        Text(cameraController.recognizedLabels.prefix(3).joined(separator: " · "))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Bedside.dim)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                    }
+                    Text(statusText)
+                        .font(.system(size: 14, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                    Spacer(minLength: 0)
                 }
-                .padding(14)
+                .foregroundStyle(statusColor)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    Capsule(style: .continuous)
                         .fill(Bedside.surface.opacity(0.45))
-                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Bedside.sep, lineWidth: 0.7))
+                        .overlay(Capsule(style: .continuous).stroke(Bedside.sep, lineWidth: 0.7))
                 )
 
                 HStack(spacing: 12) {
@@ -680,11 +653,10 @@ struct RingingView: View {
                 if cameraController.canMockCapture {
                     Button { cameraController.mockCapture(targetLabel: target) } label: {
                         Label("模拟拍到目标", systemImage: "photo.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Bedside.amber)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 11)
-                            .background { LiquidGlassCapsule(style: .card, interactive: true) }
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Bedside.dim)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
                     }
                     .buttonStyle(.plain)
                 }

@@ -15,7 +15,6 @@ struct SuccessView: View {
     let onDone: () -> Void
     let onFeedback: (WakeMood?, String) -> Void
 
-    @State private var selectedMood: WakeMood?
     @State private var note: String
 
     init(session: WakeSession, sessions: [WakeSession], onDone: @escaping () -> Void, onFeedback: @escaping (WakeMood?, String) -> Void) {
@@ -23,7 +22,6 @@ struct SuccessView: View {
         self.sessions = sessions
         self.onDone = onDone
         self.onFeedback = onFeedback
-        _selectedMood = State(initialValue: session.mood)
         _note = State(initialValue: session.note)
     }
 
@@ -33,14 +31,12 @@ struct SuccessView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                Spacer(minLength: 68)
-
                 successHero
 
                 Spacer()
 
                 Button {
-                    onFeedback(selectedMood, note)
+                    onFeedback(session.mood, note)
                     onDone()
                 } label: {
                     Text(session.emergencyClosed ? "知道了" : "完成")
@@ -55,40 +51,31 @@ struct SuccessView: View {
                         .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
                 )
                 .padding(.horizontal, 24)
-                .padding(.bottom, 48)
+                .padding(.bottom, 104)
             }
         }
         .preferredColorScheme(.dark)
     }
 
     private var successHero: some View {
-        VStack(spacing: 28) {
-            VStack(spacing: 10) {
-                Text(session.emergencyClosed ? "已紧急关闭" : "起床成功")
-                    .font(.system(size: 42, weight: .bold))
-                    .foregroundStyle(session.emergencyClosed ? Bedside.red : Bedside.text)
+        VStack(spacing: 14) {
+            Text(session.emergencyClosed ? "已紧急关闭" : "起床成功")
+                .font(.system(size: 44, weight: .bold))
+                .foregroundStyle(session.emergencyClosed ? Bedside.red : Bedside.text)
+                .shadow(color: .black.opacity(0.42), radius: 12, x: 0, y: 6)
 
-                Text(session.emergencyClosed ? "这次先算赖床赢了" : "今天没有被床封印")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(session.emergencyClosed ? Bedside.red.opacity(0.86) : Bedside.amber)
-                    .multilineTextAlignment(.center)
-                    .shadow(color: Bedside.accent.opacity(session.emergencyClosed ? 0 : 0.30), radius: 14)
-            }
+            Text(session.emergencyClosed ? "这次先算赖床赢了" : "今天没有被床封印")
+                .font(.system(size: 21, weight: .semibold))
+                .foregroundStyle(session.emergencyClosed ? Bedside.red.opacity(0.86) : Bedside.amber)
+                .multilineTextAlignment(.center)
+                .shadow(color: Bedside.accent.opacity(session.emergencyClosed ? 0 : 0.36), radius: 14)
 
-            if session.emergencyClosed {
-                emergencyMark
-            } else {
-                Color.clear
-                    .frame(height: 330)
-            }
-
-            if session.emergencyClosed {
-                summaryLine
-                    .padding(.top, 0)
-            }
+            summaryLine
+                .padding(.top, 4)
         }
         .frame(maxWidth: 390)
         .padding(.horizontal, 28)
+        .padding(.top, 82)
     }
 
     private var emergencyMark: some View {
@@ -128,15 +115,15 @@ struct SuccessView: View {
             Text("连续 \(currentStreak) 天")
         }
         .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(Bedside.subtext)
+        .foregroundStyle(session.emergencyClosed ? Bedside.red.opacity(0.82) : Bedside.text.opacity(0.78))
         .lineLimit(1)
         .minimumScaleFactor(0.68)
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(
             Capsule(style: .continuous)
-                .fill(Color.black.opacity(0.18))
-                .overlay(Capsule(style: .continuous).stroke(Bedside.sep.opacity(0.72), lineWidth: 0.7))
+                .fill(Color.black.opacity(0.20))
+                .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.12), lineWidth: 0.7))
         )
     }
 
@@ -182,38 +169,40 @@ struct SuccessView: View {
 
 private struct SuccessMorningBackdrop: View {
     var body: some View {
-        ZStack {
-            Image("SuccessGeneratedBackground")
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        GeometryReader { proxy in
+            ZStack(alignment: .top) {
+                Bedside.bg
 
-            VStack {
+                Image("SuccessGeneratedBackground")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: proxy.size.width)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
                 LinearGradient(
                     colors: [
-                        Bedside.bg.opacity(0.92),
-                        Bedside.bg.opacity(0.58),
-                        .clear
+                        Bedside.bg.opacity(0.74),
+                        Bedside.bg.opacity(0.24),
+                        .clear,
+                        .clear,
+                        Bedside.bg.opacity(0.18),
+                        Bedside.bg.opacity(0.92)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 330)
-                Spacer()
-            }
 
-            LinearGradient(
-                colors: [
-                    .clear,
-                    .clear,
-                    Bedside.bg.opacity(0.34),
-                    Bedside.bg
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+                LinearGradient(
+                    colors: [
+                        .black.opacity(0.22),
+                        .clear,
+                        .black.opacity(0.18)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            }
         }
-        .background(Bedside.bg)
     }
 }
 

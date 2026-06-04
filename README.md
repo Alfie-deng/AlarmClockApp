@@ -1,4 +1,4 @@
-# AlarmClockApp
+# 挑战闹钟
 
 Wake challenge alarm app for iOS, built with SwiftUI.
 
@@ -44,28 +44,26 @@ If launch fails with `device ... Locked`, unlock the iPhone and rerun only the f
 - Repeat-day scheduling is backed by local notification weekday triggers.
 - Notification authorization status is surfaced on the home screen when it blocks delivery.
 - Challenge types:
-  - Math: supported
-  - Shake: supported with CoreMotion on device and a simulator mock button
-  - Speak: supported with Speech recognition and a simulator mock button
-  - Photo: not opened; removed from user selection until object detection has a real verification loop
-  - Memory game: not opened yet
-- Math challenge supports a 3-question flow.
+  - Math: supported, with configurable difficulty and question count.
+  - Shake: supported with CoreMotion on device and a simulator mock button.
+  - Photo: supported with local Apple Vision image classification and a simulator mock button.
+  - Speak: code retained, but not exposed as a formal user-facing mode.
+  - Memory game: code retained, but not opened yet.
+- Math, shake, and photo are the formal challenge modes exposed in setup.
 - Completed challenges create wake session records.
-- Success screen records mood/note feedback.
 - Stats screen is driven by stored wake session data.
 - Local notification callbacks trigger challenges by `alarmId`.
-- Unit tests cover repeat scheduling, challenge availability, and wake-session streak stats.
+- App display name and notification identity are configured as `挑战闹钟`.
+- Unit tests cover repeat scheduling, challenge availability, shake tracking, snooze clamping, speech matching, and wake-session streak stats.
 
 ## Debug Launch Args
 
 ```text
 --showChallenge --showChallengeType math
 --showChallenge --showChallengeType shake
---showChallenge --showChallengeType speak
---showChallenge --showChallengeType memory
+--showChallenge --showChallengeType photo
 --debugShakeRequiredCount 3
---debugSpeechMock
---debugSpeechNoAutoStart
+--debugPhotoMock
 --showNoChallenge
 --debugScheduleWeekdays
 --debugTriggerStoredAlarm

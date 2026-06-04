@@ -51,33 +51,45 @@ struct AlarmSettingView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         VStack(spacing: 10) {
-                            HStack(spacing: 0) {
-                                Picker("", selection: $hour) {
-                                    ForEach(0..<24, id: \.self) { h in
-                                        Text(String(format: "%02d", h))
-                                            .tag(h)
-                                            .foregroundColor(Bedside.text)
-                                    }
-                                }
-                                .pickerStyle(.wheel)
-                                .frame(width: 116, height: 170)
-                                .clipped()
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(Color.white.opacity(0.075))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .stroke(Bedside.accent.opacity(0.16), lineWidth: 0.7)
+                                    )
+                                    .frame(width: 202, height: 34)
 
-                                Text(":")
-                                    .font(.system(size: 34, weight: .light, design: .rounded))
-                                    .foregroundColor(Bedside.accent)
-                                    .offset(y: -2)
-
-                                Picker("", selection: $min) {
-                                    ForEach(0..<60, id: \.self) { m in
-                                        Text(String(format: "%02d", m))
-                                            .tag(m)
-                                            .foregroundColor(Bedside.text)
+                                HStack(spacing: 0) {
+                                    Picker("", selection: $hour) {
+                                        ForEach(0..<24, id: \.self) { h in
+                                            Text(String(format: "%02d", h))
+                                                .tag(h)
+                                                .foregroundColor(Bedside.text)
+                                        }
                                     }
+                                    .pickerStyle(.wheel)
+                                    .colorScheme(.dark)
+                                    .frame(width: 116, height: 170)
+                                    .clipped()
+
+                                    Text(":")
+                                        .font(.system(size: 34, weight: .light, design: .rounded))
+                                        .foregroundColor(Bedside.accent)
+                                        .offset(y: -2)
+
+                                    Picker("", selection: $min) {
+                                        ForEach(0..<60, id: \.self) { m in
+                                            Text(String(format: "%02d", m))
+                                                .tag(m)
+                                                .foregroundColor(Bedside.text)
+                                        }
+                                    }
+                                    .pickerStyle(.wheel)
+                                    .colorScheme(.dark)
+                                    .frame(width: 116, height: 170)
+                                    .clipped()
                                 }
-                                .pickerStyle(.wheel)
-                                .frame(width: 116, height: 170)
-                                .clipped()
                             }
                         }
                         .padding(.top, 4)
@@ -112,7 +124,7 @@ struct AlarmSettingView: View {
                             )
                             Divider().background(Bedside.sep).padding(.leading, 56)
                             row(icon: "moon.zzz.fill", color: Bedside.accent, title: "稍后提醒") {
-                                HStack(spacing: 6) {
+                                HStack(spacing: 4) {
                                     ForEach(snoozeOptions, id: \.self) { option in
                                         Button {
                                             snoozeMinutes = option
@@ -120,7 +132,7 @@ struct AlarmSettingView: View {
                                             Text("\(option)")
                                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                                 .foregroundStyle(snoozeMinutes == option ? Color.black.opacity(0.78) : Bedside.subtext)
-                                                .frame(width: 28, height: 24)
+                                                .frame(width: option >= 10 ? 28 : 24, height: 24)
                                                 .background(
                                                     Capsule(style: .continuous)
                                                         .fill(snoozeMinutes == option ? Bedside.accent : Bedside.surface.opacity(0.72))
@@ -131,6 +143,8 @@ struct AlarmSettingView: View {
                                     Text("分")
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(Bedside.subtext)
+                                        .frame(width: 14, alignment: .trailing)
+                                        .fixedSize()
                                 }
                             }
                             Divider().background(Bedside.sep).padding(.leading, 56)
@@ -163,7 +177,6 @@ struct AlarmSettingView: View {
                             ChallengeModePicker(selection: $challenge, isEnabled: requiresChallenge)
                                 .padding(.horizontal, 12)
 
-                            Divider().background(Bedside.sep).padding(.leading, 56)
                             Button { showChallengeSettings = true } label: {
                                 HStack(spacing: 12) {
                                     BedsideIconBadge(systemName: "slider.horizontal.3")

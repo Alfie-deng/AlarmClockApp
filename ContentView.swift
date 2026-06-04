@@ -4,6 +4,7 @@ import UIKit
 struct ContentView: View {
     @EnvironmentObject var mgr: AlarmManager
     @State private var tab = 0
+    @State private var dismissedDebugScreen = false
 
     init() {
         Self.configureSystemTabBar()
@@ -15,8 +16,8 @@ struct ContentView: View {
 
         let tabBar = UITabBar.appearance()
         tabBar.itemPositioning = .centered
-        tabBar.itemWidth = 92
-        tabBar.itemSpacing = 18
+        tabBar.itemWidth = 80
+        tabBar.itemSpacing = 30
         tabBar.tintColor = accent
         tabBar.unselectedItemTintColor = unselected
 
@@ -68,16 +69,20 @@ struct ContentView: View {
         return type
     }
 
+    private var activeDebugScreen: String? {
+        dismissedDebugScreen ? nil : debugScreen
+    }
+
     var body: some View {
         Group {
-            if debugScreen == "ringing" {
+            if activeDebugScreen == "ringing" {
                 RingingIntroView(
                     timeText: "07:00",
                     challengeName: "数学题",
                     onStartChallenge: {},
                     onSnooze: {}
                 )
-            } else if debugScreen == "math" {
+            } else if activeDebugScreen == "math" {
                 RingingView(
                     record: ChallengeRecord(
                         alarmId: nil,
@@ -96,7 +101,7 @@ struct ContentView: View {
                     onCorrect: {},
                     onSnooze: {}
                 )
-            } else if debugScreen == "success" {
+            } else if activeDebugScreen == "success" {
                 SuccessView(
                     session: WakeSession(
                         alarmId: nil,
@@ -111,7 +116,7 @@ struct ContentView: View {
                         emergencyClosed: false
                     ),
                     sessions: [],
-                    onDone: {},
+                    onDone: { dismissedDebugScreen = true },
                     onFeedback: { _, _ in }
                 )
             } else {
@@ -189,7 +194,7 @@ struct ContentView: View {
             HomeView()
                 .tag(0)
                 .tabItem {
-                    Label("首页", systemImage: "house.fill")
+                    Label("首页", systemImage: "bed.double.fill")
                 }
 
             AlarmTabView()
@@ -201,7 +206,7 @@ struct ContentView: View {
             StatsView(sessions: mgr.wakeSessions)
                 .tag(2)
                 .tabItem {
-                    Label("统计", systemImage: "chart.bar.fill")
+                    Label("统计", systemImage: "chart.line.uptrend.xyaxis")
                 }
         }
         .tint(Color(red: 1.0, green: 144.0 / 255.0, blue: 34.0 / 255.0))
@@ -343,7 +348,7 @@ private struct AlarmEmptyCard: View {
                 Text("暂无闹钟")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Bedside.text)
-                Text("用右上角 + 添加起床挑战")
+                Text("添加后会出现在这里")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
             }
@@ -352,7 +357,7 @@ private struct AlarmEmptyCard: View {
         .padding(.vertical, 28)
         .background { LiquidGlassPanel(radius: 20, style: .hero) }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("暂无闹钟，请使用右上角新增闹钟")
+        .accessibilityLabel("暂无闹钟，添加后会出现在这里")
     }
 }
 
