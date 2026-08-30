@@ -3,6 +3,13 @@ import SwiftUI
 import UIKit
 import Vision
 
+private enum PhotoAnalysisResult: Sendable {
+    case matched(labels: [String], identifier: String, confidence: Float)
+    case rejected(labels: [String], topIdentifier: String, topConfidence: Float)
+    case failed(String)
+    case cancelled
+}
+
 @MainActor
 final class CameraChallengeController: ObservableObject {
     enum State: Equatable {
@@ -35,6 +42,10 @@ final class CameraChallengeController: ObservableObject {
     @Published private(set) var recognitionSummary = "等待拍照"
     @Published private(set) var recognitionConfidence: Float = 0
     @Published private(set) var recognizedLabels: [String] = []
+
+    private var analysisTask: Task<Void, Never>?
+    private var visionTask: Task<PhotoAnalysisResult, Never>?
+    private var analysisGeneration = UUID()
 
     var canUseCamera: Bool {
         UIImagePickerController.isSourceTypeAvailable(.camera)
@@ -76,12 +87,14 @@ final class CameraChallengeController: ObservableObject {
     }
 
     func accept(image: UIImage, targetLabel: String) {
+        cancelPendingAnalysis()
         capturedImage = image
         isShowingCamera = false
         analyze(image: image, targetLabel: targetLabel)
     }
 
     func retake() {
+        cancelPendingAnalysis()
         capturedImage = nil
         recognitionSummary = "等待拍照"
         recognitionConfidence = 0
@@ -90,11 +103,20 @@ final class CameraChallengeController: ObservableObject {
     }
 
     func mockCapture(targetLabel: String) {
+        cancelPendingAnalysis()
         capturedImage = Self.makeMockImage(targetLabel: targetLabel)
         recognitionSummary = "模拟照片命中「\(targetLabel)」"
         recognitionConfidence = 1
         recognizedLabels = [targetLabel]
         state = .matched
+    }
+
+    func cancelPendingAnalysis() {
+        visionTask?.cancel()
+        visionTask = nil
+        analysisTask?.cancel()
+        analysisTask = nil
+        analysisGeneration = UUID()
     }
 
     private func openCamera() {
@@ -108,6 +130,8 @@ final class CameraChallengeController: ObservableObject {
     }
 
     private func analyze(image: UIImage, targetLabel: String) {
+        cancelPendingAnalysis()
+        let generation = analysisGeneration
         state = .analyzing
         recognitionSummary = "正在寻找「\(targetLabel)」"
         recognitionConfidence = 0
@@ -121,11 +145,12 @@ final class CameraChallengeController: ObservableObject {
 
         let normalizedTarget = Alarm.normalizedPhotoTarget(targetLabel)
         let aliases = Self.aliases(for: normalizedTarget)
-        Task.detached(priority: .userInitiated) {
+        let visionTask = Task.detached(priority: .userInitiated) { () -> PhotoAnalysisResult in
             let request = VNClassifyImageRequest()
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             do {
                 try handler.perform([request])
+                guard !Task.isCancelled else { return .cancelled }
                 let observations = request.results ?? []
                 let labels = observations.map(\.identifier)
                 let bestMatch = observations
@@ -134,24 +159,42 @@ final class CameraChallengeController: ObservableObject {
                         return aliases.contains { identifier.contains($0) }
                     }
                     .max { $0.confidence < $1.confidence }
-                await MainActor.run {
-                    self.recognizedLabels = labels
-                    if let bestMatch, bestMatch.confidence >= 0.08 {
-                        self.recognitionConfidence = bestMatch.confidence
-                        self.recognitionSummary = "识别到 \(bestMatch.identifier)，匹配「\(normalizedTarget)」"
-                        self.state = .matched
-                    } else {
-                        self.recognitionConfidence = observations.first?.confidence ?? 0
-                        let top = observations.first?.identifier ?? "未知内容"
-                        self.recognitionSummary = "最高识别为 \(top)，没有命中「\(normalizedTarget)」"
-                        self.state = .rejected
-                    }
+                if let bestMatch, bestMatch.confidence >= 0.08 {
+                    return .matched(labels: labels, identifier: bestMatch.identifier, confidence: bestMatch.confidence)
                 }
+                return .rejected(
+                    labels: labels,
+                    topIdentifier: observations.first?.identifier ?? "未知内容",
+                    topConfidence: observations.first?.confidence ?? 0
+                )
             } catch {
-                await MainActor.run {
-                    self.recognitionSummary = "识别失败：\(error.localizedDescription)"
-                    self.state = .rejected
-                }
+                return .failed(error.localizedDescription)
+            }
+        }
+        self.visionTask = visionTask
+        analysisTask = Task { [weak self, visionTask] in
+            let result = await visionTask.value
+            guard !Task.isCancelled else { return }
+            guard let self, self.analysisGeneration == generation else { return }
+
+            self.visionTask = nil
+            self.analysisTask = nil
+            switch result {
+            case .matched(let labels, let identifier, let confidence):
+                self.recognizedLabels = labels
+                self.recognitionConfidence = confidence
+                self.recognitionSummary = "识别到 \(identifier)，匹配「\(normalizedTarget)」"
+                self.state = .matched
+            case .rejected(let labels, let topIdentifier, let topConfidence):
+                self.recognizedLabels = labels
+                self.recognitionConfidence = topConfidence
+                self.recognitionSummary = "最高识别为 \(topIdentifier)，没有命中「\(normalizedTarget)」"
+                self.state = .rejected
+            case .failed(let message):
+                self.recognitionSummary = "识别失败：\(message)"
+                self.state = .rejected
+            case .cancelled:
+                return
             }
         }
     }

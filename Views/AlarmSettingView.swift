@@ -21,6 +21,7 @@ struct AlarmSettingView: View {
     @State private var requiresChallenge = true
     @State private var showChallengeSettings = false
     @State private var testRecord: ChallengeRecord?
+    @State private var didRunChallengeTest = false
     @State private var soundPlayer = AlarmSoundPlayer()
 
     var isEdit: Bool { alarm != nil }
@@ -52,14 +53,6 @@ struct AlarmSettingView: View {
                     VStack(spacing: 20) {
                         VStack(spacing: 10) {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(Color.white.opacity(0.075))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .stroke(Bedside.accent.opacity(0.16), lineWidth: 0.7)
-                                    )
-                                    .frame(width: 202, height: 34)
-
                                 HStack(spacing: 0) {
                                     Picker("", selection: $hour) {
                                         ForEach(0..<24, id: \.self) { h in
@@ -96,8 +89,6 @@ struct AlarmSettingView: View {
 
                         // 基础设置
                         VStack(spacing: 0) {
-                            editableRow(icon: "tag", title: "闹钟名称", text: $label)
-                            Divider().background(Bedside.sep).padding(.leading, 56)
                             row(icon: "calendar", color: Bedside.accent, title: "重复") {
                                 HStack(spacing: 7) {
                                     ForEach(weekdayOptions, id: \.value) { weekday in
@@ -160,14 +151,9 @@ struct AlarmSettingView: View {
                         VStack(spacing: 14) {
                             HStack(spacing: 12) {
                                 BedsideIconBadge(systemName: "shield.checkered")
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("挑战方式")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundColor(Bedside.text)
-                                    Text(requiresChallenge ? challenge.description : "关闭后闹钟可直接停止")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(Bedside.subtext)
-                                }
+                                Text("挑战方式")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(Bedside.text)
                                 Spacer()
                                 BedsidePill(text: requiresChallenge ? "已开启" : "已关闭")
                             }
@@ -212,31 +198,44 @@ struct AlarmSettingView: View {
                             .buttonStyle(.plain)
                             .disabled(!requiresChallenge)
                             .opacity(requiresChallenge ? 1 : 0.45)
+
+                            Divider().background(Bedside.sep).padding(.leading, 56)
+
+                            Button {
+                                testRecord = makeTestRecord()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    BedsideIconBadge(systemName: "play.circle.fill")
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("测试本次挑战")
+                                            .font(.system(size: 17, weight: .bold))
+                                            .foregroundStyle(Bedside.text)
+                                        Text("只测试挑战，不会自动保存设置")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(Bedside.subtext)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.82)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundStyle(Bedside.dim)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!requiresChallenge)
+                            .opacity(requiresChallenge ? 1 : 0.45)
+
+                            if didRunChallengeTest {
+                                TestSaveReminder()
+                                    .padding(.horizontal, 16)
+                                    .padding(.bottom, 14)
+                            }
                         }
                         .alarmSettingPanel(radius: 18)
-
-                        Button {
-                            testRecord = makeTestRecord()
-                        } label: {
-                            HStack(spacing: 12) {
-                                BedsideIconBadge(systemName: "play.circle.fill")
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("测试本次挑战")
-                                        .font(.system(size: 17, weight: .bold))
-                                        .foregroundStyle(Bedside.text)
-                                    Text("不保存闹钟，只预演响铃和挑战流程")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(Bedside.subtext)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundStyle(Bedside.dim)
-                            }
-                            .padding(16)
-                            .background { LiquidGlassPanel(radius: 18, style: .card, interactive: true) }
-                        }
-                        .buttonStyle(.plain)
 
                         if isEdit {
                             Button {
@@ -290,8 +289,15 @@ struct AlarmSettingView: View {
         .fullScreenCover(item: $testRecord) { record in
             RingingView(
                 record: record,
-                onCorrect: { testRecord = nil },
-                onSnooze: { testRecord = nil }
+                isTestMode: true,
+                onCorrect: {
+                    didRunChallengeTest = true
+                    testRecord = nil
+                },
+                onSnooze: {
+                    didRunChallengeTest = true
+                    testRecord = nil
+                }
             )
         }
         .preferredColorScheme(.dark)
@@ -657,6 +663,36 @@ private struct StepperRow: View {
     }
 }
 
+private struct TestSaveReminder: View {
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Bedside.amber)
+
+            Text("测试已退出，右上角点保存后才会生效")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Bedside.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Bedside.accent.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Bedside.accent.opacity(0.24), lineWidth: 0.8)
+                )
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("测试已退出，右上角点保存后才会生效")
+    }
+}
+
 private struct ChallengeModePicker: View {
     @Binding var selection: ChallengeType
     let isEnabled: Bool
@@ -685,7 +721,7 @@ private struct ChallengeModeButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                ZStack(alignment: .topTrailing) {
+                ZStack {
                     Circle()
                         .fill(isSelected ? Bedside.accent.opacity(0.22) : Color.white.opacity(0.045))
                         .overlay(Circle().stroke(isSelected ? Bedside.accent.opacity(0.34) : Bedside.sep.opacity(0.7), lineWidth: 0.8))
@@ -695,14 +731,6 @@ private struct ChallengeModeButton: View {
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(isSelected ? Bedside.amber : Bedside.subtext)
                         .frame(width: 42, height: 42)
-
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Bedside.accent)
-                            .background(Circle().fill(Color.black.opacity(0.55)))
-                            .offset(x: 5, y: -5)
-                    }
                 }
 
                 Text(type.rawValue)

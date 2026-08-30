@@ -31,8 +31,8 @@ final class AlarmNotificationDelegate: NSObject, UIApplicationDelegate, UNUserNo
     ) {
         let alarmId = notification.request.content.userInfo["alarmId"] as? String
         Task { @MainActor in
-            alarmManager?.triggerChallenge(alarmId: alarmId)
-            completionHandler([.banner, .sound])
+            let didTrigger = alarmManager?.triggerChallenge(alarmId: alarmId) ?? false
+            completionHandler(didTrigger ? [.banner, .sound] : [])
         }
     }
 }

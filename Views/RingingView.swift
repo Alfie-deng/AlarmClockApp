@@ -97,6 +97,7 @@ struct RingingIntroView: View {
 
 struct RingingView: View {
     let record: ChallengeRecord
+    let isTestMode: Bool
     let onCorrect: () -> Void
     let onSnooze: () -> Void
 
@@ -105,13 +106,16 @@ struct RingingView: View {
     @State private var questionIndex = 0
     @State private var memoryInput: [Int] = []
     @State private var speechCompletedCount = 0
+    @State private var photoCompletionScheduled = false
+    @State private var photoCompletionGeneration = UUID()
     @State private var soundPlayer = AlarmSoundPlayer()
     @StateObject private var shakeController: ShakeChallengeController
     @StateObject private var speechController = SpeechChallengeController()
     @StateObject private var cameraController = CameraChallengeController()
 
-    init(record: ChallengeRecord, onCorrect: @escaping () -> Void, onSnooze: @escaping () -> Void) {
+    init(record: ChallengeRecord, isTestMode: Bool = false, onCorrect: @escaping () -> Void, onSnooze: @escaping () -> Void) {
         self.record = record
+        self.isTestMode = isTestMode
         self.onCorrect = onCorrect
         self.onSnooze = onSnooze
         let requiredCount = ProcessInfo.processInfo.arguments.contains("--debugShakeRequiredCount") ? Self.debugShakeRequiredCount : record.shakeRequiredCount
@@ -151,8 +155,10 @@ struct RingingView: View {
                     .font(.system(size: 82, weight: .light, design: .rounded))
                     .monospacedDigit()
                     .glow(Bedside.amber)
-                BedsidePill(text: "挑战模式：\(record.type.rawValue)", icon: "shield.checkered")
-                    .padding(.top, 10)
+                if shouldShowExternalChallengePill {
+                    BedsidePill(text: "挑战模式：\(record.type.rawValue)", icon: "shield.checkered")
+                        .padding(.top, 10)
+                }
 
                 Spacer()
 
@@ -164,23 +170,32 @@ struct RingingView: View {
                 // 稍后提醒
                 Button { onSnooze() } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 13))
-                        Text("紧急关闭（将计入失败）").font(.system(size: 14))
+                        Image(systemName: isTestMode ? "xmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .font(.system(size: 13))
+                        Text(isTestMode ? "退出测试" : "紧急关闭（将计入失败）")
+                            .font(.system(size: 14, weight: isTestMode ? .semibold : .medium))
                     }
-                    .foregroundColor(Bedside.dim)
+                    .foregroundColor(isTestMode ? Bedside.subtext : Bedside.dim)
                     .padding(.horizontal, 24).padding(.vertical, 12)
                     .background { LiquidGlassCapsule(style: .card, interactive: true) }
                 }
                 .buttonStyle(.plain)
                 .padding(.bottom, 40)
             }
+            .safeAreaPadding(.top, 18)
         }
         .onAppear {
             soundPlayer.start(soundName: record.soundName)
         }
         .onDisappear {
             soundPlayer.stop()
+            cameraController.cancelPendingAnalysis()
+            photoCompletionGeneration = UUID()
         }
+    }
+
+    private var shouldShowExternalChallengePill: Bool {
+        ![ChallengeType.math, .shake, .photo].contains(record.type)
     }
 
     @ViewBuilder
@@ -252,43 +267,18 @@ struct RingingView: View {
     // MARK: - 数学挑战
     private var mathCard: some View {
         VStack(spacing: 18) {
-            HStack(alignment: .center, spacing: 12) {
-                BedsideIconBadge(systemName: "plus.forwardslash.minus")
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("数学题挑战")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Bedside.text)
-                    Text("第 \(questionIndex + 1) / \(max(record.questions.count, 1)) 题 · 保持清醒")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Bedside.subtext)
-                }
-
+            HStack {
                 Spacer()
-
-                Text(String(format: "%02d", questionIndex + 1))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(Bedside.amber)
-                    .frame(width: 42, height: 30)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Bedside.accent.opacity(0.12))
-                            .overlay(Capsule().stroke(Bedside.accent.opacity(0.22), lineWidth: 0.6))
-                    )
+                challengeModePill("数学题")
+                Spacer()
             }
 
-            VStack(spacing: 16) {
-                Text("解答以下题目")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Bedside.subtext)
-                    .textCase(.uppercase)
-                    .tracking(1.2)
-
+            VStack(spacing: 18) {
                 Text(currentQuestion?.prompt ?? record.question)
-                    .font(.system(size: 40, weight: .semibold, design: .rounded))
+                    .font(.system(size: 72, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .minimumScaleFactor(0.75)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.44)
                     .foregroundColor(Bedside.text)
                     .shadow(color: Bedside.amber.opacity(0.18), radius: 10)
 
@@ -297,21 +287,22 @@ struct RingingView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
 
-            VStack(spacing: 9) {
+            VStack(spacing: 12) {
                 ForEach(0..<3) { row in
-                    HStack(spacing: 9) {
+                    HStack(spacing: 14) {
                         ForEach(1...3, id: \.self) { col in
                             keyBtn("\(row * 3 + col)") { answer.append("\(row * 3 + col)") }
                         }
                     }
                 }
-                HStack(spacing: 9) {
+                HStack(spacing: 14) {
                     keyBtn(icon: "delete.left") { if !answer.isEmpty { answer.removeLast() } }
                     keyBtn("0") { answer.append("0") }
                     keyBtn(icon: "checkmark") { checkAnswer() }.disabled(answer.isEmpty)
                 }
             }
-            .padding(10)
+            .padding(.top, 2)
+            .padding(.bottom, 6)
 
             if let r = result {
                 HStack(spacing: 6) {
@@ -330,31 +321,65 @@ struct RingingView: View {
         .padding(.horizontal, 24)
     }
 
+    private func challengeModePill(_ title: String) -> some View {
+        Label("挑战模式：\(title)", systemImage: "shield.checkered")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(Bedside.amber)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Bedside.accent.opacity(0.14))
+                    .overlay(Capsule().stroke(Bedside.accent.opacity(0.24), lineWidth: 0.7))
+            )
+    }
+
     private func keyBtn(_ title: String? = nil, icon: String? = nil, disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        let isConfirm = icon == "checkmark"
+
+        return Button(action: action) {
             ZStack {
-                LiquidGlassPanel(radius: 16, style: .card, interactive: !disabled)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill((icon == "checkmark" ? Bedside.accent : Color.white).opacity(disabled ? 0.035 : 0.055))
-                            .blendMode(.screen)
-                    }
-                    .opacity(disabled ? 0.55 : 1)
-                    .shadow(color: icon == "checkmark" ? Bedside.accent.opacity(0.14) : .black.opacity(0.12), radius: 6, x: 0, y: 3)
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: isConfirm
+                                ? [Bedside.accent.opacity(disabled ? 0.16 : 0.72), Bedside.amber.opacity(disabled ? 0.10 : 0.42)]
+                                : [Color.white.opacity(disabled ? 0.035 : 0.09), Color.white.opacity(disabled ? 0.02 : 0.045)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                isConfirm
+                                    ? Bedside.accent.opacity(disabled ? 0.12 : 0.32)
+                                    : Color.white.opacity(disabled ? 0.06 : 0.13),
+                                lineWidth: 0.8
+                            )
+                    )
+                    .background(
+                        Circle()
+                            .fill(Color.black.opacity(0.18))
+                            .blur(radius: 7)
+                            .offset(y: 5)
+                    )
+                    .shadow(color: isConfirm ? Bedside.accent.opacity(disabled ? 0.04 : 0.18) : .black.opacity(0.18), radius: 10, x: 0, y: 5)
+                    .opacity(disabled ? 0.52 : 1)
 
                 if let t = title {
                     Text(t)
-                        .font(.system(size: 23, weight: .semibold, design: .rounded))
+                        .font(.system(size: 30, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .foregroundColor(disabled ? Bedside.dim : Bedside.text)
                 } else if let i = icon {
                     Image(systemName: i)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(i == "checkmark" ? Bedside.accent : Bedside.subtext)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(i == "checkmark" ? Bedside.text.opacity(disabled ? 0.38 : 0.92) : Bedside.subtext)
                 }
             }
-            .frame(height: 50)
-            .frame(maxWidth: .infinity)
+            .frame(width: 80, height: 80)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
     }
@@ -391,32 +416,23 @@ struct RingingView: View {
 
     // MARK: - 摇晃挑战
     private var shakeCard: some View {
-        VStack(spacing: 22) {
-            HStack(alignment: .center, spacing: 12) {
-                BedsideIconBadge(systemName: "iphone.radiowaves.left.and.right")
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("摇手机挑战")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Bedside.text)
-                    Text(shakeController.isMotionAvailable ? "用力摇晃手机，清醒到位再关闭" : "当前设备不支持传感器，使用模拟按钮验证")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Bedside.subtext)
-                }
-
+        VStack(spacing: 20) {
+            HStack {
                 Spacer()
+                challengeModePill("摇手机")
+                Spacer()
+            }
 
+            VStack(spacing: 6) {
                 Text("\(shakeController.count)/\(shakeController.requiredCount)")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 52, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(Bedside.amber)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Bedside.accent.opacity(0.12))
-                            .overlay(Capsule().stroke(Bedside.accent.opacity(0.22), lineWidth: 0.6))
-                    )
+                    .foregroundStyle(Bedside.text)
+                    .shadow(color: Bedside.amber.opacity(0.18), radius: 10)
+
+                Text(shakeController.isMotionAvailable ? "用力摇晃手机" : "模拟器不支持传感器")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Bedside.subtext)
             }
 
             ZStack(alignment: .leading) {
@@ -435,7 +451,7 @@ struct RingingView: View {
 
             VStack(spacing: 7) {
                 Image(systemName: "iphone.gen3.radiowaves.left.and.right")
-                    .font(.system(size: 58, weight: .light))
+                    .font(.system(size: 64, weight: .light))
                     .foregroundStyle(Bedside.accent)
                     .symbolEffect(.pulse, options: .repeating, value: shakeController.count)
                 Text(shakeController.isRunning ? "传感器监听中" : "准备开始")
@@ -445,17 +461,19 @@ struct RingingView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
 
-            Button {
-                shakeController.recordMockShake()
-            } label: {
-                Label("模拟摇动一次", systemImage: "hand.raised.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Bedside.amber)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 11)
-                    .background { LiquidGlassCapsule(style: .card, interactive: true) }
+            if !shakeController.isMotionAvailable {
+                Button {
+                    shakeController.recordMockShake()
+                } label: {
+                    Label("模拟摇动一次", systemImage: "hand.raised.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Bedside.amber)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 11)
+                        .background { LiquidGlassCapsule(style: .card, interactive: true) }
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(20)
         .ringingPanel(radius: 24)
@@ -565,83 +583,24 @@ struct RingingView: View {
 
     private var photoCard: some View {
         let target = record.targetPhotoLabel ?? "床头灯"
-        let statusText = cameraController.didMatchTarget ? "已识别到目标" : cameraController.state.message
-        let statusColor = cameraController.didMatchTarget ? Bedside.green : (cameraController.capturedImage == nil ? Bedside.subtext : Bedside.amber)
+        let status = photoRecognitionStatus
 
-        return VStack(spacing: 18) {
-            HStack(alignment: .center, spacing: 12) {
-                BedsideIconBadge(systemName: "camera.viewfinder")
-                Text("拍照挑战")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Bedside.text)
-                Spacer(minLength: 0)
-            }
-
-            VStack(spacing: 12) {
-                Text(target)
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(Bedside.text)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.black.opacity(0.22))
-                            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Bedside.accent.opacity(0.24), lineWidth: 0.8))
-                    )
+        return VStack(spacing: 16) {
+            HStack {
+                Spacer()
+                challengeModePill("拍照")
+                Spacer()
             }
 
             if let image = cameraController.capturedImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(height: 132)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Bedside.accent.opacity(0.28), lineWidth: 0.8))
-                    .accessibilityLabel("已拍摄照片预览")
-
-                HStack(spacing: 8) {
-                    Image(systemName: cameraController.didMatchTarget ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath.camera")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text(statusText)
-                        .font(.system(size: 14, weight: .semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                    Spacer(minLength: 0)
-                }
-                .foregroundStyle(statusColor)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 11)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Bedside.surface.opacity(0.45))
-                        .overlay(Capsule(style: .continuous).stroke(Bedside.sep, lineWidth: 0.7))
-                )
-
-                HStack(spacing: 12) {
-                    Button { cameraController.retake() } label: {
-                        Label("重拍", systemImage: "arrow.triangle.2.circlepath.camera")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Bedside.amber)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background { LiquidGlassCapsule(style: .card, interactive: true) }
-                    }
-                    .buttonStyle(.plain)
-                    Button { onCorrect() } label: {
-                        Label("确认完成", systemImage: "checkmark")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(cameraController.didMatchTarget ? Color.black.opacity(0.82) : Bedside.dim)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Capsule(style: .continuous).fill(cameraController.didMatchTarget ? Bedside.accent : Bedside.surface.opacity(0.52)))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!cameraController.didMatchTarget)
-                }
+                photoPreview(image: image, target: target)
+                photoStatusBanner(status)
+                photoActionRow
             } else {
+                photoMissionStage(target: target)
+
                 Button { cameraController.requestCameraAccessThenOpen() } label: {
-                    Label("打开相机拍照", systemImage: "camera.fill")
+                    Label("拍摄", systemImage: "camera.fill")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Color.black.opacity(0.82))
                         .frame(maxWidth: .infinity)
@@ -652,7 +611,7 @@ struct RingingView: View {
 
                 if cameraController.canMockCapture {
                     Button { cameraController.mockCapture(targetLabel: target) } label: {
-                        Label("模拟拍到目标", systemImage: "photo.fill")
+                        Label("模拟拍摄", systemImage: "photo.fill")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Bedside.dim)
                             .padding(.horizontal, 14)
@@ -662,15 +621,148 @@ struct RingingView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(22)
         .ringingPanel(radius: 24)
         .padding(.horizontal, 24)
-        .sheet(isPresented: $cameraController.isShowingCamera) {
+        .fullScreenCover(isPresented: $cameraController.isShowingCamera) {
             CameraCaptureView(
                 onImage: { cameraController.accept(image: $0, targetLabel: target) },
                 onCancel: { cameraController.isShowingCamera = false }
             )
             .ignoresSafeArea()
+        }
+        .onChange(of: cameraController.state) { _, state in
+            handlePhotoStateChange(state)
+        }
+    }
+
+    private func photoMissionStage(target: String) -> some View {
+        VStack(spacing: 18) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Bedside.accent.opacity(0.20),
+                                Color.white.opacity(0.04)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(Bedside.accent.opacity(0.22), lineWidth: 0.9)
+                    )
+
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 88, weight: .light))
+                    .foregroundStyle(Bedside.accent.opacity(0.13))
+                    .offset(y: -8)
+
+                VStack(spacing: 10) {
+                    Text(target)
+                        .font(.system(size: 42, weight: .black, design: .rounded))
+                        .foregroundStyle(Bedside.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.74)
+                }
+            }
+            .frame(height: 236)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("拍照挑战，目标 \(target)")
+    }
+
+    private func photoPreview(image: UIImage, target: String) -> some View {
+        ZStack(alignment: .topLeading) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(height: 286)
+                .frame(maxWidth: .infinity)
+                .clipped()
+                .background(Color.black.opacity(0.24))
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Bedside.accent.opacity(0.26), lineWidth: 0.9))
+
+            Text(target)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Bedside.text)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(Color.black.opacity(0.52))
+                        .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.14), lineWidth: 0.7))
+                )
+                .padding(12)
+        }
+        .accessibilityLabel("已拍摄照片预览，目标 \(target)")
+    }
+
+    private func photoStatusBanner(_ status: (title: String, detail: String, icon: String, color: Color)) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: status.icon)
+                .font(.system(size: 18, weight: .bold))
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(status.title)
+                    .font(.system(size: 18, weight: .bold))
+                Text(status.detail)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.80)
+                    .opacity(0.84)
+            }
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(status.color)
+        .padding(.horizontal, 15)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(status.color.opacity(0.13))
+                .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(status.color.opacity(0.22), lineWidth: 0.8))
+        )
+    }
+
+    private var photoActionRow: some View {
+        Button { cameraController.retake() } label: {
+            Label("重拍", systemImage: "arrow.triangle.2.circlepath.camera")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Bedside.amber)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background { LiquidGlassCapsule(style: .card, interactive: true) }
+        }
+        .buttonStyle(.plain)
+        .disabled(cameraController.state == .analyzing || cameraController.state == .matched)
+    }
+
+    private var photoRecognitionStatus: (title: String, detail: String, icon: String, color: Color) {
+        switch cameraController.state {
+        case .matched:
+            return ("已匹配", "识别通过，正在完成挑战", "checkmark.circle.fill", Bedside.green)
+        case .analyzing, .captured:
+            return ("识别中", "正在判断照片是否命中目标", "hourglass", Bedside.amber)
+        case .rejected:
+            return ("未匹配，请重拍", "没有识别到目标物", "xmark.circle.fill", Bedside.red)
+        case .unavailable(let reason):
+            return ("未匹配，请重拍", reason, "exclamationmark.triangle.fill", Bedside.red)
+        default:
+            return ("识别中", "等待照片识别结果", "hourglass", Bedside.amber)
+        }
+    }
+
+    private func handlePhotoStateChange(_ state: CameraChallengeController.State) {
+        guard state == .matched, !photoCompletionScheduled else { return }
+        photoCompletionScheduled = true
+        let generation = photoCompletionGeneration
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled, photoCompletionGeneration == generation else { return }
+            onCorrect()
         }
     }
 

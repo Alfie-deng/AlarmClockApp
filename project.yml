@@ -19,6 +19,10 @@ targets:
       - Assets.xcassets
       - zh-Hans.lproj
       - en.lproj
+      - path: Resources/Sounds
+        buildPhase: resources
+        includes:
+          - "*.caf"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alfie.AlarmClockApp

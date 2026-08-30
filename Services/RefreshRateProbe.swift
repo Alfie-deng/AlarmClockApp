@@ -2,7 +2,7 @@ import QuartzCore
 import UIKit
 
 /// Lightweight refresh-rate sampler for diagnosing ProMotion / frame pacing issues.
-/// Starts only in Debug builds or when launched with `--debugRefreshRate`.
+/// Starts only when launched with `--debugRefreshRate`.
 @MainActor
 final class RefreshRateProbe: NSObject {
     static let shared = RefreshRateProbe()
@@ -14,11 +14,7 @@ final class RefreshRateProbe: NSObject {
 
     static func startIfRequested() {
         let args = ProcessInfo.processInfo.arguments
-        #if DEBUG
-        let shouldStart = !args.contains("--noRefreshRateProbe")
-        #else
         let shouldStart = args.contains("--debugRefreshRate")
-        #endif
 
         guard shouldStart else { return }
         shared.start()

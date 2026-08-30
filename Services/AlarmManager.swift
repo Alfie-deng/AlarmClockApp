@@ -1,4 +1,5 @@
 import AudioToolbox
+import AVFoundation
 import Foundation
 import UserNotifications
 import Combine
@@ -141,7 +142,7 @@ class AlarmManager: ObservableObject {
         let content = UNMutableNotificationContent()
         content.title = "起床挑战！"
         content.body = alarm.requiresChallenge ? "完成\(alarm.challengeType.rawValue)才能关闭" : "该起床了"
-        content.sound = .default
+        content.sound = AlarmSoundPlayer.notificationSound(named: alarm.soundName)
         content.userInfo = ["alarmId": alarm.id.uuidString]
 
         let timeComponents = Calendar.current.dateComponents([.hour, .minute], from: alarm.time)
@@ -180,6 +181,7 @@ class AlarmManager: ObservableObject {
     func cancelNotification(for alarm: Alarm) {
         let identifiers = [alarm.id.uuidString] + (1...7).map { notificationIdentifier(for: alarm, weekday: $0) } + [snoozeIdentifier(for: alarm)]
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: identifiers)
         refreshAlarmDeliverySnapshotSoon()
     }
 
@@ -187,22 +189,24 @@ class AlarmManager: ObservableObject {
         await UNUserNotificationCenter.current().pendingNotificationRequests().map(\.identifier).sorted()
     }
 
-    func triggerChallenge(for alarm: Alarm) {
+    @discardableResult
+    func triggerChallenge(for alarm: Alarm) -> Bool {
+        guard !isShowingChallenge, !isShowingSuccess else { return false }
         triggeredAlarm = alarm
         currentChallenge = alarm.requiresChallenge ? makeChallengeRecord(for: alarm) : makeDismissOnlyRecord(for: alarm)
         isShowingChallenge = true
+        return true
     }
 
-    func triggerChallenge(alarmId: String?) {
+    @discardableResult
+    func triggerChallenge(alarmId: String?) -> Bool {
         guard let alarmId,
               let uuid = UUID(uuidString: alarmId),
-              let alarm = alarms.first(where: { $0.id == uuid }) else {
-            if let fallback = nextEnabledAlarm {
-                triggerChallenge(for: fallback)
-            }
-            return
+              let alarm = alarms.first(where: { $0.id == uuid }),
+              alarm.isEnabled else {
+            return false
         }
-        triggerChallenge(for: alarm)
+        return triggerChallenge(for: alarm)
     }
 
     func completeChallenge() {
@@ -322,7 +326,7 @@ class AlarmManager: ObservableObject {
         let content = UNMutableNotificationContent()
         content.title = "稍后提醒"
         content.body = alarm.requiresChallenge ? "继续完成起床挑战" : "该起床了"
-        content.sound = .default
+        content.sound = AlarmSoundPlayer.notificationSound(named: alarm.soundName)
         content.userInfo = ["alarmId": alarm.id.uuidString]
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(max(1, alarm.snoozeMinutes) * 60), repeats: false)
@@ -380,28 +384,56 @@ class AlarmManager: ObservableObject {
 
 
 final class AlarmSoundPlayer {
-    private var timer: Timer?
-    private var currentSoundId: SystemSoundID = AlarmSound.options[0].systemSoundId
+    private var audioPlayer: AVAudioPlayer?
 
     func start(soundName: String) {
         stop()
-        currentSoundId = AlarmSound.option(named: soundName).systemSoundId
-        playOnce()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.8, repeats: true) { [weak self] _ in
-            self?.playOnce()
+        configurePlaybackSession()
+
+        guard let url = Self.soundURL(named: soundName) else {
+            AudioServicesPlayAlertSound(SystemSoundID(kSystemSoundID_Vibrate))
+            return
+        }
+
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.numberOfLoops = -1
+            player.prepareToPlay()
+            player.play()
+            audioPlayer = player
+        } catch {
+            AudioServicesPlayAlertSound(SystemSoundID(kSystemSoundID_Vibrate))
         }
     }
 
     func preview(soundName: String) {
-        AudioServicesPlaySystemSound(AlarmSound.option(named: soundName).systemSoundId)
+        start(soundName: soundName)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.stop()
+        }
     }
 
     func stop() {
-        timer?.invalidate()
-        timer = nil
+        audioPlayer?.stop()
+        audioPlayer = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    private func playOnce() {
-        AudioServicesPlaySystemSound(currentSoundId)
+    static func notificationSound(named soundName: String) -> UNNotificationSound {
+        let fileName = AlarmSound.option(named: soundName).fileName
+        guard Bundle.main.url(forResource: fileName, withExtension: nil) != nil else {
+            return .default
+        }
+        return UNNotificationSound(named: UNNotificationSoundName(fileName))
+    }
+
+    private static func soundURL(named soundName: String) -> URL? {
+        Bundle.main.url(forResource: AlarmSound.option(named: soundName).fileName, withExtension: nil)
+    }
+
+    private func configurePlaybackSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
+        try? session.setActive(true)
     }
 }

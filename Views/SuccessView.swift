@@ -51,7 +51,7 @@ struct SuccessView: View {
                         .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
                 )
                 .padding(.horizontal, 24)
-                .padding(.bottom, 104)
+                .padding(.bottom, 126)
             }
         }
         .preferredColorScheme(.dark)
@@ -75,7 +75,7 @@ struct SuccessView: View {
         }
         .frame(maxWidth: 390)
         .padding(.horizontal, 28)
-        .padding(.top, 82)
+        .padding(.top, 72)
     }
 
     private var emergencyMark: some View {

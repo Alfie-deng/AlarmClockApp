@@ -77,13 +77,13 @@ enum MathDifficulty: String, CaseIterable, Identifiable, Codable {
 struct AlarmSound: Identifiable, Equatable {
     let id: String
     let title: String
-    let systemSoundId: UInt32
+    let fileName: String
 
     static let options: [AlarmSound] = [
-        AlarmSound(id: "gentleMorning", title: "温柔晨光", systemSoundId: 1005),
-        AlarmSound(id: "forestBird", title: "森林鸟鸣", systemSoundId: 1016),
-        AlarmSound(id: "oceanBreeze", title: "海边微风", systemSoundId: 1023),
-        AlarmSound(id: "classicBell", title: "经典铃声", systemSoundId: 1007)
+        AlarmSound(id: "gentleMorning", title: "温柔晨光", fileName: "gentle-morning.caf"),
+        AlarmSound(id: "forestBird", title: "森林鸟鸣", fileName: "forest-bird.caf"),
+        AlarmSound(id: "oceanBreeze", title: "海边微风", fileName: "ocean-breeze.caf"),
+        AlarmSound(id: "classicBell", title: "经典铃声", fileName: "classic-bell.caf")
     ]
 
     static func option(named name: String) -> AlarmSound {

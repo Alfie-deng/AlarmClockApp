@@ -55,7 +55,8 @@ struct StatsView: View {
             let weekTargetDays = Self.makeWeekTargetDays(now: now, calendar: calendar)
             let targetSet = Set(weekTargetDays)
             let completedDays = Set(completed.map { calendar.startOfDay(for: $0.completedAt) }.filter { targetSet.contains($0) })
-            let wakeTimePoints = Self.makeWakeTimePoints(days: weekTargetDays, sessions: completed, calendar: calendar)
+            let rhythmSessions = completed.filter { Self.isRhythmEligible($0, calendar: calendar) }
+            let wakeTimePoints = Self.makeWakeTimePoints(days: weekTargetDays, sessions: rhythmSessions, calendar: calendar)
             let wakeMinutes = wakeTimePoints.compactMap(\.minutes)
             let averageWakeMinutes = wakeMinutes.isEmpty ? 0 : wakeMinutes.reduce(0, +) / wakeMinutes.count
             let volatility = Self.wakeVolatilityMinutes(wakeMinutes)
@@ -64,7 +65,7 @@ struct StatsView: View {
             let mostUsedChallengeText = Self.mostUsedChallengeText(challengeSummaries)
             let regularitySubtitle: String
             if wakeMinutes.isEmpty {
-                regularitySubtitle = "完成一次挑战后生成起床规律"
+                regularitySubtitle = completed.isEmpty ? "完成一次挑战后生成起床规律" : "早晨记录不足，暂不计算作息波动"
             } else {
                 regularitySubtitle = "平均 \(Self.timeText(averageWakeMinutes)) · 最早 \(Self.timeText(wakeMinutes.min() ?? averageWakeMinutes)) · 最晚 \(Self.timeText(wakeMinutes.max() ?? averageWakeMinutes))"
             }
@@ -122,6 +123,11 @@ struct StatsView: View {
             }
         }
 
+        private static func isRhythmEligible(_ session: WakeSession, calendar: Calendar) -> Bool {
+            let hour = calendar.component(.hour, from: session.completedAt)
+            return (4...12).contains(hour)
+        }
+
         private static func makeChallengeSummaries(completedSessions: [WakeSession]) -> [ChallengeSummary] {
             let supported = ChallengeType.supportedCases
             let grouped = Dictionary(grouping: completedSessions, by: \.challengeType)
@@ -173,9 +179,49 @@ struct StatsView: View {
                 return WakePersona(title: "作息游牧民", subtitle: "你的起床时间正在四处迁徙", detail: "近 7 日起床波动约 \(wakeVolatilityMinutes) 分钟，规律性还有救，但别拖成考古项目。", symbol: "point.topleft.down.curvedto.point.bottomright.up")
             }
             if let mostUsed = challengeSummaries.max(by: { $0.count < $1.count }), mostUsed.count > 0 {
-                return WakePersona(title: "\(mostUsed.type.rawValue)求生者", subtitle: "最常靠它把自己从床上捞出来", detail: "\(mostUsed.type.rawValue)已完成 \(mostUsed.count) 次，当前连续 \(currentStreak) 天。", symbol: mostUsed.type.icon)
+                return personaForMostUsedChallenge(mostUsed.type, count: mostUsed.count, currentStreak: currentStreak)
             }
             return WakePersona(title: "起床观察对象", subtitle: "样本还少，系统先不下狠手", detail: "完成几次挑战后，这里会给你一个更精准也更欠揍的称号。", symbol: "person.crop.circle.badge.questionmark")
+        }
+
+        private static func personaForMostUsedChallenge(_ type: ChallengeType, count: Int, currentStreak: Int) -> WakePersona {
+            switch type {
+            case .math:
+                return WakePersona(
+                    title: "晨间算术师",
+                    subtitle: "先把脑子点亮，再和被窝谈判",
+                    detail: "数学题已通关 \(count) 次，当前连续 \(currentStreak) 天。清醒这件事，先从算对开始。",
+                    symbol: type.icon
+                )
+            case .shake:
+                return WakePersona(
+                    title: "被窝拆迁队",
+                    subtitle: "把赖床摇散，把清醒摇回来",
+                    detail: "摇手机已完成 \(count) 次，当前连续 \(currentStreak) 天。每天早上先给被窝来点工程震动。",
+                    symbol: type.icon
+                )
+            case .photo:
+                return WakePersona(
+                    title: "清醒取证员",
+                    subtitle: "拍到证据，赖床就不能抵赖",
+                    detail: "拍照已完成 \(count) 次，当前连续 \(currentStreak) 天。赖床现场已经被你多次取证。",
+                    symbol: type.icon
+                )
+            case .speak:
+                return WakePersona(
+                    title: "起床宣誓官",
+                    subtitle: "嘴先醒，身体就别继续装死",
+                    detail: "念语句已完成 \(count) 次，当前连续 \(currentStreak) 天。嘴醒了，身体别装死。",
+                    symbol: type.icon
+                )
+            case .memory:
+                return WakePersona(
+                    title: "记忆开机员",
+                    subtitle: "用短路边缘唤醒大脑",
+                    detail: "记忆挑战已完成 \(count) 次，当前连续 \(currentStreak) 天。",
+                    symbol: type.icon
+                )
+            }
         }
 
         private static func minutesAfterMidnight(_ session: WakeSession) -> Int {
@@ -235,61 +281,63 @@ struct StatsView: View {
 
     private func battleHeroCard(_ snapshot: StatsSnapshot) -> some View {
         let persona = snapshot.persona
-        return VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Image(systemName: persona.symbol)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Bedside.amber)
-                            .frame(width: 24, height: 24)
-                        Text("起床人格")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(Bedside.amber)
-                    }
-
-                    Text(persona.title)
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(Bedside.text)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-
-                    Text(persona.subtitle)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Bedside.subtext)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                }
-
-                Spacer(minLength: 8)
-
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text("\(snapshot.currentStreak)")
-                        .font(.system(size: 70, weight: .light, design: .rounded))
-                        .monospacedDigit()
+        return VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 7) {
+                    Image(systemName: persona.symbol)
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Bedside.amber)
-                        .shadow(color: Bedside.accent.opacity(0.34), radius: 16)
-                    Text("连续挑战")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Bedside.subtext)
-                        .offset(y: -6)
+                    Text("起床人格")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Bedside.amber)
                 }
-            }
 
-            Text(persona.detail)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Bedside.subtext)
-                .lineLimit(2)
-                .minimumScaleFactor(0.84)
+                Text(persona.title)
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundStyle(Bedside.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Text(persona.subtitle)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Bedside.amber)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: 9) {
-                reportBadge(title: "本周完成", value: "\(snapshot.weekSuccessCount)/\(snapshot.weekTargetDayCount)")
-                reportBadge(title: "最佳纪录", value: "\(snapshot.bestStreak) 天")
-                reportBadge(title: "紧急关闭", value: "\(snapshot.emergencyCount) 次")
+                heroSummaryMetric(title: "本周完成", value: "\(snapshot.weekSuccessCount)/\(snapshot.weekTargetDayCount)")
+                heroSummaryMetric(title: "最佳纪录", value: "\(snapshot.bestStreak) 天")
+                heroSummaryMetric(title: "紧急关闭", value: "\(snapshot.emergencyCount) 次")
             }
         }
-        .padding(18)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 21)
         .background { LiquidGlassPanel(radius: 24, style: .hero) }
+    }
+
+    private func heroSummaryMetric(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Bedside.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(title)
+                .font(.system(size: 12.5, weight: .bold))
+                .foregroundStyle(Bedside.dim)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Bedside.sep.opacity(0.65), lineWidth: 0.7))
+        )
     }
 
     private func wakeRhythmReportCard(_ snapshot: StatsSnapshot) -> some View {

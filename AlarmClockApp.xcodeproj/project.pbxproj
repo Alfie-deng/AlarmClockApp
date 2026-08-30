@@ -13,6 +13,10 @@
 		51854E397BA58B9C62D785D8EAA7436E /* ShakeChallengeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFDE886DCF10532FE26C3E0EEE30479D /* ShakeChallengeController.swift */; };
 		5451F7CAF2D2EDC9270724A89149BC39 /* RefreshRateProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = A68F81CBFF07F711480041487A711FB4 /* RefreshRateProbe.swift */; };
 		6DD05BB14432FC743C8AC86C3C4A2A55 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C043344985D1CB63753A8ABA16C7E22A /* StatsView.swift */; };
+		75D2B7F1AB3C4D5E90123401 /* gentle-morning.caf in Resources */ = {isa = PBXBuildFile; fileRef = 75D2B7F1AB3C4D5E90123400 /* gentle-morning.caf */; };
+		75D2B7F1AB3C4D5E90123403 /* forest-bird.caf in Resources */ = {isa = PBXBuildFile; fileRef = 75D2B7F1AB3C4D5E90123402 /* forest-bird.caf */; };
+		75D2B7F1AB3C4D5E90123405 /* ocean-breeze.caf in Resources */ = {isa = PBXBuildFile; fileRef = 75D2B7F1AB3C4D5E90123404 /* ocean-breeze.caf */; };
+		75D2B7F1AB3C4D5E90123407 /* classic-bell.caf in Resources */ = {isa = PBXBuildFile; fileRef = 75D2B7F1AB3C4D5E90123406 /* classic-bell.caf */; };
 		938E42F30AEDAD17148D24C3317A5B09 /* ShakeChallengeTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D636589DE2D9D5EFE839E01BC618284E /* ShakeChallengeTracker.swift */; };
 		9611967A3D5F58948CC517F295B8A063 /* AlarmSettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56536A6FA5781BFF1F55D7776B3C68D /* AlarmSettingView.swift */; };
 		A38ADE6D96DD6529012DABB4505B5591 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45033F328F426FC6561D8EC087C36D1F /* ContentView.swift */; };
@@ -44,6 +48,10 @@
 		45033F328F426FC6561D8EC087C36D1F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4BECBA8DF7B4006659923097A154E4AB /* AlarmClockAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AlarmClockAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A1ADE785D1C84D9C3C17F1EA71C0E75 /* RingingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingingView.swift; sourceTree = "<group>"; };
+		75D2B7F1AB3C4D5E90123400 /* gentle-morning.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "gentle-morning.caf"; sourceTree = "<group>"; };
+		75D2B7F1AB3C4D5E90123402 /* forest-bird.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "forest-bird.caf"; sourceTree = "<group>"; };
+		75D2B7F1AB3C4D5E90123404 /* ocean-breeze.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "ocean-breeze.caf"; sourceTree = "<group>"; };
+		75D2B7F1AB3C4D5E90123406 /* classic-bell.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "classic-bell.caf"; sourceTree = "<group>"; };
 		7911DF7CFA9564C7EDD6228103069699 /* SuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessView.swift; sourceTree = "<group>"; };
 		9B79004E2E5AF294A7F6DB6E6AAA01FA /* AlarmManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmManager.swift; sourceTree = "<group>"; };
 		A68F81CBFF07F711480041487A711FB4 /* RefreshRateProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefreshRateProbe.swift; sourceTree = "<group>"; };
@@ -98,6 +106,18 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
+		75D2B7F1AB3C4D5E90123408 /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				75D2B7F1AB3C4D5E90123400 /* gentle-morning.caf */,
+				75D2B7F1AB3C4D5E90123402 /* forest-bird.caf */,
+				75D2B7F1AB3C4D5E90123404 /* ocean-breeze.caf */,
+				75D2B7F1AB3C4D5E90123406 /* classic-bell.caf */,
+			);
+			name = Sounds;
+			path = Resources/Sounds;
+			sourceTree = "<group>";
+		};
 		8BA50B5979FAE3F658C89AB3BD8AE5B6 /* Components */ = {
 			isa = PBXGroup;
 			children = (
@@ -124,6 +144,7 @@
 				2B50CC428CFD4E580C90C04744E6B2C8 /* zh-Hans.lproj */,
 				8BA50B5979FAE3F658C89AB3BD8AE5B6 /* Components */,
 				A5A0464FE4DAE97B7C540383722DC567 /* Models */,
+				75D2B7F1AB3C4D5E90123408 /* Sounds */,
 				7B57B30757E425AE906A6F17EAB67A1A /* Services */,
 				F0512D35195D1E74A489CBE1091D482A /* Tests */,
 				0EB2A42B08F3BC8924125359BFE1F207 /* Views */,
@@ -214,6 +235,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				C66AAC875AADDACFB2E98CAAEB3AD0D4 /* Assets.xcassets in Resources */,
+				75D2B7F1AB3C4D5E90123401 /* gentle-morning.caf in Resources */,
+				75D2B7F1AB3C4D5E90123403 /* forest-bird.caf in Resources */,
+				75D2B7F1AB3C4D5E90123405 /* ocean-breeze.caf in Resources */,
+				75D2B7F1AB3C4D5E90123407 /* classic-bell.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

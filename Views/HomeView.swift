@@ -6,35 +6,66 @@ struct HomeView: View {
     @State private var showAdd = false
     @State private var editAlarm: Alarm?
     @State private var sleepCopySeed = Int.random(in: 0...10_000)
+    @State private var emptyConcept: EmptyHomeConcept = Self.initialEmptyConcept
     private let horizontalPadding: CGFloat = 28
     private let contentMaxWidth: CGFloat = 384
 
     private var next: Alarm? { mgr.nextEnabledAlarm }
+    private var isEmptyHome: Bool { next == nil }
+    private static var initialEmptyConcept: EmptyHomeConcept {
+        guard let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--homeEmptyConcept"),
+              ProcessInfo.processInfo.arguments.indices.contains(index + 1),
+              ProcessInfo.processInfo.arguments[index + 1].lowercased() == "dawn" else {
+            return .groundedDock
+        }
+        return .dawnReveal
+    }
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                BedroomBackdrop()
+                BedroomBackdrop(concept: isEmptyHome ? emptyConcept : .groundedDock)
                     .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
-                        Color.clear
-                            .frame(height: 304)
+                if isEmptyHome {
+                    EmptyCenteredTitle(concept: emptyConcept)
+                        .frame(maxWidth: contentMaxWidth)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.top, emptyConcept == .groundedDock ? 156 : 204)
 
-                        glassCardStack
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 14) {
+                            Spacer(minLength: 0)
+
+                            homeContent
+                        }
+                        .frame(minHeight: 720, alignment: .bottom)
+                        .frame(maxWidth: contentMaxWidth)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.bottom, 76)
                     }
-                    .frame(maxWidth: contentMaxWidth)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.bottom, 28)
-                }
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 14) {
+                            Spacer(minLength: 0)
 
-                HeaderBar()
-                    .frame(maxWidth: contentMaxWidth)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.top, 28)
+                            homeContent
+                        }
+                        .frame(minHeight: 720, alignment: .bottom)
+                        .frame(maxWidth: contentMaxWidth)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.bottom, 96)
+                    }
+
+                    HeaderBar()
+                        .frame(maxWidth: contentMaxWidth)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.top, 28)
+                }
             }
         }
         .sheet(isPresented: $showAdd) {
@@ -51,29 +82,47 @@ struct HomeView: View {
     }
 
     @ViewBuilder
-    private var glassCardStack: some View {
-        cardStackContent
-    }
-
-    private var cardStackContent: some View {
+    private var homeContent: some View {
         VStack(spacing: 18) {
             if mgr.notificationStatus.isBlockingAlarmDelivery {
                 NotificationWarningCard()
             }
 
+            if isEmptyHome {
+                EmptyHomeExperience(
+                    concept: emptyConcept,
+                    copy: emptyHomeCopy,
+                    onCreate: { showAdd = true }
+                )
+            } else {
+                activeAlarmStack
+            }
+        }
+    }
+
+    private var emptyHomeCopy: String {
+        let copies = [
+            "睡眠进入自由模式",
+            "明早先交给自觉",
+            "被窝暂时拥有主导权",
+            "起床计划还在随缘",
+            "今晚没有值班任务"
+        ]
+        return copies[abs(sleepCopySeed) % copies.count]
+    }
+
+    private var activeAlarmStack: some View {
+        VStack(spacing: 18) {
             AlarmHeroCard(
                 alarm: next,
                 onTap: {
                     if let next {
                         editAlarm = next
-                    } else {
-                        showAdd = true
                     }
                 },
                 onCancel: {
-                    if let next {
-                        mgr.toggleAlarm(next)
-                    }
+                    guard let next else { return }
+                    mgr.toggleAlarm(next)
                 }
             )
 
@@ -82,7 +131,13 @@ struct HomeView: View {
     }
 }
 
+private enum EmptyHomeConcept: CaseIterable {
+    case groundedDock
+    case dawnReveal
+}
+
 private struct BedroomBackdrop: View {
+    let concept: EmptyHomeConcept
     private let imageOffset = CGSize(width: -24, height: -44)
 
     var body: some View {
@@ -114,6 +169,11 @@ private struct BedroomBackdrop: View {
                     )
                 )
 
+            if concept == .dawnReveal {
+                DawnRevealBackdrop()
+                    .blendMode(.screen)
+            }
+
             GeometryReader { proxy in
                 let width = proxy.size.width
                 let top = proxy.safeAreaInsets.top
@@ -124,18 +184,21 @@ private struct BedroomBackdrop: View {
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    Bedside.accent.opacity(0.14),
-                                    Bedside.amber.opacity(0.05),
+                                    Bedside.accent.opacity(concept == .dawnReveal ? 0.20 : 0.14),
+                                    Bedside.amber.opacity(concept == .dawnReveal ? 0.10 : 0.05),
                                     .clear
                                 ],
                                 center: .center,
                                 startRadius: 20,
-                                endRadius: 160
+                                endRadius: concept == .dawnReveal ? 230 : 160
                             )
                         )
-                        .frame(width: 300, height: 150)
-                        .blur(radius: 30)
-                        .offset(x: width * 0.22 + imageOffset.width, y: top + 210 + imageOffset.height)
+                        .frame(width: concept == .dawnReveal ? 420 : 300, height: concept == .dawnReveal ? 250 : 150)
+                        .blur(radius: concept == .dawnReveal ? 42 : 30)
+                        .offset(
+                            x: width * (concept == .dawnReveal ? 0.12 : 0.22) + imageOffset.width,
+                            y: top + (concept == .dawnReveal ? 290 : 210) + imageOffset.height
+                        )
 
                     BedroomVignette()
                 }
@@ -151,6 +214,48 @@ private struct BedroomBackdrop: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
+        }
+    }
+}
+
+private struct DawnRevealBackdrop: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+
+            ZStack(alignment: .topTrailing) {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                .clear,
+                                Bedside.amber.opacity(0.08),
+                                Bedside.accent.opacity(0.18),
+                                .clear
+                            ],
+                            startPoint: UnitPoint(x: 0.68, y: 0.20),
+                            endPoint: UnitPoint(x: 0.34, y: 0.82)
+                        )
+                    )
+
+                Capsule(style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Bedside.amber.opacity(0.42),
+                                Bedside.accent.opacity(0.18),
+                                .clear
+                            ],
+                            startPoint: .topTrailing,
+                            endPoint: .bottomLeading
+                        )
+                    )
+                    .frame(width: width * 0.34, height: height * 0.72)
+                    .blur(radius: 28)
+                    .rotationEffect(.degrees(11))
+                    .offset(x: -width * 0.08, y: height * 0.04)
+            }
         }
     }
 }
@@ -187,13 +292,247 @@ private struct BedroomVignette: View {
     }
 }
 
+private struct EmptyHomeExperience: View {
+    let concept: EmptyHomeConcept
+    let copy: String
+    let onCreate: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            switch concept {
+            case .groundedDock:
+                GroundedControlDock(copy: copy, onCreate: onCreate)
+            case .dawnReveal:
+                DawnRevealHome(copy: copy, onCreate: onCreate)
+            }
+        }
+        .animation(.snappy(duration: 0.28), value: concept)
+    }
+}
+
+private struct EmptyCenteredTitle: View {
+    let concept: EmptyHomeConcept
+
+    var body: some View {
+        VStack(spacing: concept == .groundedDock ? 13 : 16) {
+            Image("SunriseMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: concept == .groundedDock ? 76 : 86, height: concept == .groundedDock ? 58 : 66)
+                .shadow(color: Bedside.accent.opacity(0.36), radius: 18, x: 0, y: 6)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 8) {
+                Text("起床挑战")
+                    .font(.system(size: concept == .groundedDock ? 34 : 36, weight: .bold))
+                    .foregroundStyle(Bedside.text)
+                    .shadow(color: .black.opacity(0.45), radius: 4, x: 0, y: 2)
+
+                Text("不完成挑战，别想关闹钟")
+                    .font(.system(size: 15.5, weight: .semibold))
+                    .foregroundStyle(Bedside.subtext)
+            }
+            .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("起床挑战，不完成挑战，别想关闹钟")
+    }
+}
+
+private struct GroundedControlDock: View {
+    let copy: String
+    let onCreate: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            VStack(spacing: 7) {
+                Text("暂无闹钟")
+                    .font(.system(size: 25, weight: .bold))
+                    .foregroundStyle(Bedside.text)
+                    .lineLimit(1)
+
+                Text(copy)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Bedside.subtext)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+
+            PrimaryCreateAlarmButton(action: onCreate)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 24)
+        .padding(.bottom, 24)
+        .background {
+            LiquidGlassPanel(radius: 28, style: .hero, interactive: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("暂无闹钟，\(copy)，创建挑战闹钟")
+    }
+}
+
+private struct DawnRevealHome: View {
+    let copy: String
+    let onCreate: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            VStack(spacing: 8) {
+                Text("暂无闹钟")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Bedside.text)
+
+                Text(copy)
+                    .font(.system(size: 14.5, weight: .semibold))
+                    .foregroundStyle(Bedside.subtext)
+            }
+            .multilineTextAlignment(.center)
+
+            PrimaryCreateAlarmButton(action: onCreate)
+                .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 22)
+        .padding(.top, 52)
+        .padding(.bottom, 20)
+        .background {
+            ZStack(alignment: .bottom) {
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        Bedside.bg.opacity(0.05),
+                        Bedside.bg.opacity(0.62)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                Ellipse()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Bedside.accent.opacity(0.22),
+                                Bedside.amber.opacity(0.10),
+                                .clear
+                            ],
+                            center: .center,
+                            startRadius: 8,
+                            endRadius: 210
+                        )
+                    )
+                    .frame(width: 340, height: 150)
+                    .blur(radius: 24)
+                    .offset(y: -58)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("暂无闹钟，\(copy)，创建挑战闹钟")
+    }
+}
+
+private struct SunriseBadge: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image("SunriseMark")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size * 0.74)
+            .padding(size * 0.18)
+            .background {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Bedside.accent.opacity(0.18),
+                                Bedside.amber.opacity(0.07),
+                                .clear
+                            ],
+                            center: .center,
+                            startRadius: 2,
+                            endRadius: size
+                        )
+                    )
+            }
+            .shadow(color: Bedside.accent.opacity(0.34), radius: 16, x: 0, y: 4)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct PrimaryCreateAlarmButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("创建挑战闹钟")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color.black.opacity(0.82))
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background {
+                    ZStack {
+                        Capsule(style: .continuous)
+                            .fill(Bedside.accent.opacity(0.56))
+                            .blur(radius: 18)
+                            .offset(y: 8)
+
+                        Capsule(style: .continuous)
+                            .fill(Bedside.amber.opacity(0.34))
+                            .blur(radius: 8)
+                            .offset(y: -2)
+
+                        Capsule(style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(hex: "FFD481"),
+                                        Bedside.amber,
+                                        Bedside.accent
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+
+                        Capsule(style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.38), .clear],
+                                    startPoint: .top,
+                                    endPoint: .center
+                                )
+                            )
+                            .padding(.horizontal, 2)
+                            .padding(.top, 1)
+                            .padding(.bottom, 18)
+                    }
+                }
+                .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.30), lineWidth: 0.8))
+                .shadow(color: Bedside.accent.opacity(0.46), radius: 22, x: 0, y: 10)
+                .shadow(color: Bedside.amber.opacity(0.28), radius: 34, x: 0, y: 0)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("创建挑战闹钟")
+    }
+}
+
 private struct HeaderBar: View {
     var body: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("🌙 起床挑战")
-                    .font(.system(size: 27, weight: .bold))
-                    .foregroundStyle(Bedside.text)
+                HStack(alignment: .center, spacing: 8) {
+                    Image("SunriseMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 30)
+                        .accessibilityHidden(true)
+                    Text("起床挑战")
+                        .font(.system(size: 27, weight: .bold))
+                        .foregroundStyle(Bedside.text)
+                }
                 Text("不完成挑战，别想关闹钟")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
@@ -290,7 +629,7 @@ private struct AlarmHeroCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 258)
+        .frame(height: alarm == nil ? 204 : 258)
         .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .onTapGesture(perform: onTap)
         .accessibilityElement(children: .combine)
@@ -300,8 +639,6 @@ private struct AlarmHeroCard: View {
     private var emptyHeroContent: some View {
         VStack(spacing: 16) {
             Spacer(minLength: 4)
-
-            EmptyHeroAddButton()
 
             VStack(spacing: 7) {
                 Text("添加第一个闹钟")
@@ -313,6 +650,22 @@ private struct AlarmHeroCard: View {
                     .foregroundStyle(Bedside.subtext)
             }
             .multilineTextAlignment(.center)
+
+            HStack(spacing: 10) {
+                Image(systemName: "plus")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                Text("创建闹钟")
+                    .font(.system(size: 15, weight: .bold))
+            }
+            .foregroundStyle(Color.black.opacity(0.80))
+            .padding(.horizontal, 24)
+            .padding(.vertical, 13)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
+            )
+            .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.22), lineWidth: 0.6))
+            .shadow(color: Bedside.accent.opacity(0.22), radius: 12, x: 0, y: 5)
 
             Spacer(minLength: 4)
         }
@@ -356,7 +709,7 @@ private struct EmptyHeroAddButton: View {
                 .shadow(color: .black.opacity(0.72), radius: 2.5, x: 0, y: 2)
                 .shadow(color: Bedside.accent.opacity(0.72), radius: 7, x: 0, y: 0)
         }
-        .frame(width: 72, height: 72)
+        .frame(width: 78, height: 78)
         .accessibilityHidden(true)
     }
 }

@@ -345,10 +345,10 @@ private struct AlarmEmptyCard: View {
                 .scaleEffect(1.12)
 
             VStack(spacing: 6) {
-                Text("暂无闹钟")
+                Text("还没有已保存的闹钟")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Bedside.text)
-                Text("添加后会出现在这里")
+                Text("保存后的闹钟会在这里管理")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
             }
@@ -357,7 +357,7 @@ private struct AlarmEmptyCard: View {
         .padding(.vertical, 28)
         .background { LiquidGlassPanel(radius: 20, style: .hero) }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("暂无闹钟，添加后会出现在这里")
+        .accessibilityLabel("还没有已保存的闹钟，保存后的闹钟会在这里管理")
     }
 }
 
@@ -431,10 +431,7 @@ private struct AlarmListCard: View {
 
                 Spacer(minLength: 8)
 
-                Button(action: onEdit) {
-                    AlarmEditPill()
-                }
-                .buttonStyle(.plain)
+                AlarmEditPill()
 
                 AlarmPowerPill(isEnabled: alarm.isEnabled, action: onToggle)
             }
@@ -443,7 +440,10 @@ private struct AlarmListCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 15)
         .background { LiquidGlassPanel(radius: 19, style: .card) }
+        .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+        .onTapGesture(perform: onEdit)
         .opacity(alarm.isEnabled ? 1 : 0.68)
+        .accessibilityAction(named: "编辑闹钟", onEdit)
     }
 
     private var timeText: some View {
@@ -521,7 +521,7 @@ private struct AlarmEditPill: View {
         HStack(spacing: 5) {
             Image(systemName: "slider.horizontal.3")
                 .font(.system(size: 12, weight: .bold))
-            Text("修改")
+            Text("详情")
                 .font(.system(size: 12, weight: .bold))
         }
         .foregroundStyle(Bedside.amber)
@@ -529,7 +529,8 @@ private struct AlarmEditPill: View {
         .frame(height: 30)
         .padding(.horizontal, 8)
         .background { LiquidGlassCapsule(style: .card, interactive: true) }
-        .accessibilityLabel("修改闹钟")
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

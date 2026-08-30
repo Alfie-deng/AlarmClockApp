@@ -95,6 +95,7 @@ final class SpeechChallengeController: ObservableObject {
     private var recognitionTask: SFSpeechRecognitionTask?
     private var matcher = SpeechPhraseMatcher(targetPhrase: "")
     private var onComplete: (() -> Void)?
+    private var recognitionGeneration = UUID()
     
     var canMockComplete: Bool {
         if ProcessInfo.processInfo.arguments.contains("--debugSpeechMock") { return true }
@@ -106,6 +107,8 @@ final class SpeechChallengeController: ObservableObject {
     }
     
     func prepareMock(phrase: String, onComplete: @escaping () -> Void) {
+        stopRecognitionOnly()
+        recognitionGeneration = UUID()
         self.onComplete = onComplete
         matcher = SpeechPhraseMatcher(targetPhrase: phrase)
         transcript = ""
@@ -124,8 +127,10 @@ final class SpeechChallengeController: ObservableObject {
             return
         }
         state = .requestingPermission
+        let generation = recognitionGeneration
         requestPermissions { [weak self] granted in
             guard let self else { return }
+            guard self.recognitionGeneration == generation else { return }
             if granted {
                 self.beginRecognition()
             } else {
@@ -135,12 +140,14 @@ final class SpeechChallengeController: ObservableObject {
     }
     
     func stop() {
+        recognitionGeneration = UUID()
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
         recognitionRequest = nil
         recognitionTask = nil
+        onComplete = nil
         if state == .listening { state = .idle }
     }
     
@@ -207,12 +214,15 @@ final class SpeechChallengeController: ObservableObject {
     }
     
     private func accept(transcript newTranscript: String) {
+        guard state != .matched else { return }
         transcript = newTranscript
         similarity = matcher.similarityScore(for: newTranscript)
         if matcher.matches(newTranscript) {
             state = .matched
             stopRecognitionOnly()
-            onComplete?()
+            let completion = onComplete
+            onComplete = nil
+            completion?()
         }
     }
     
