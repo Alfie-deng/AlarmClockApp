@@ -67,8 +67,8 @@ struct AlarmSettingView: View {
                                     .clipped()
 
                                     Text(":")
-                                        .font(.system(size: 34, weight: .light, design: .rounded))
-                                        .foregroundColor(Bedside.accent)
+                                        .font(.clock(34))
+                                        .foregroundColor(Bedside.subtext)
                                         .offset(y: -2)
 
                                     Picker("", selection: $min) {
@@ -97,9 +97,9 @@ struct AlarmSettingView: View {
                                         } label: {
                                             Text(weekday.label)
                                                 .font(.system(size: 12, weight: .semibold))
-                                                .foregroundStyle(repeatDays.contains(weekday.value) ? Color.black.opacity(0.78) : Bedside.subtext)
+                                                .foregroundStyle(repeatDays.contains(weekday.value) ? Bedside.onAccent : Bedside.subtext)
                                                 .frame(width: 24, height: 24)
-                                                .background(Circle().fill(repeatDays.contains(weekday.value) ? Bedside.accent : Bedside.surface.opacity(0.72)))
+                                                .background(Circle().fill(repeatDays.contains(weekday.value) ? Bedside.accent : Color.white.opacity(0.06)))
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -122,11 +122,11 @@ struct AlarmSettingView: View {
                                         } label: {
                                             Text("\(option)")
                                                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                                                .foregroundStyle(snoozeMinutes == option ? Color.black.opacity(0.78) : Bedside.subtext)
+                                                .foregroundStyle(snoozeMinutes == option ? Bedside.onAccent : Bedside.subtext)
                                                 .frame(width: option >= 10 ? 28 : 24, height: 24)
                                                 .background(
                                                     Capsule(style: .continuous)
-                                                        .fill(snoozeMinutes == option ? Bedside.accent : Bedside.surface.opacity(0.72))
+                                                        .fill(snoozeMinutes == option ? Bedside.accent : Color.white.opacity(0.06))
                                                 )
                                         }
                                         .buttonStyle(.plain)
@@ -152,7 +152,7 @@ struct AlarmSettingView: View {
                             HStack(spacing: 12) {
                                 BedsideIconBadge(systemName: "shield.checkered")
                                 Text("挑战方式")
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(Bedside.text)
                                 Spacer()
                                 BedsidePill(text: requiresChallenge ? "已开启" : "已关闭")
@@ -168,25 +168,18 @@ struct AlarmSettingView: View {
                                     BedsideIconBadge(systemName: "slider.horizontal.3")
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text("挑战详情")
-                                            .font(.system(size: 17, weight: .bold))
+                                            .font(.system(size: 16, weight: .regular))
                                             .foregroundStyle(Bedside.text)
                                         Text(challengeSummary)
-                                            .font(.system(size: 14, weight: .semibold))
+                                            .font(.system(size: 13, weight: .regular))
                                             .foregroundStyle(Bedside.subtext)
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.8)
                                     }
                                     Spacer()
                                     Text(challenge.rawValue)
-                                        .font(.system(size: 13, weight: .bold))
-                                        .foregroundStyle(Bedside.amber)
-                                        .padding(.horizontal, 9)
-                                        .padding(.vertical, 5)
-                                        .background(
-                                            Capsule(style: .continuous)
-                                                .fill(Bedside.accent.opacity(0.12))
-                                                .overlay(Capsule().stroke(Bedside.accent.opacity(0.18), lineWidth: 0.7))
-                                        )
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundStyle(Bedside.subtext)
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 13, weight: .bold))
                                         .foregroundStyle(Bedside.dim)
@@ -208,10 +201,10 @@ struct AlarmSettingView: View {
                                     BedsideIconBadge(systemName: "play.circle.fill")
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text("测试本次挑战")
-                                            .font(.system(size: 17, weight: .bold))
+                                            .font(.system(size: 16, weight: .regular))
                                             .foregroundStyle(Bedside.text)
                                         Text("只测试挑战，不会自动保存设置")
-                                            .font(.system(size: 13, weight: .semibold))
+                                            .font(.system(size: 13, weight: .regular))
                                             .foregroundStyle(Bedside.subtext)
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.82)
@@ -307,7 +300,7 @@ struct AlarmSettingView: View {
     private func row<Content: View>(icon: String, color: Color, title: String, @ViewBuilder trailing: () -> Content) -> some View {
         HStack(spacing: 12) {
             BedsideIconBadge(systemName: icon, color: color)
-            Text(title).font(.system(size: 17)).foregroundColor(Bedside.text)
+            Text(title).font(.system(size: 16)).foregroundColor(Bedside.text)
             Spacer()
             trailing()
         }
@@ -590,7 +583,7 @@ private struct ChallengeDetailSettingsView: View {
                             } label: {
                                 Text(target)
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(photoTargetLabel == target ? Color.black.opacity(0.78) : Bedside.subtext)
+                                    .foregroundStyle(photoTargetLabel == target ? Bedside.onAccent : Bedside.subtext)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 38)
                                     .background(
@@ -639,9 +632,9 @@ private struct StepperRow: View {
                 .foregroundStyle(Bedside.text)
             Spacer()
             Text(valueText)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(Bedside.amber)
+                .foregroundStyle(Bedside.text)
                 .frame(minWidth: 58, alignment: .trailing)
             HStack(spacing: 8) {
                 Button(action: decrement) {
@@ -721,40 +714,32 @@ private struct ChallengeModeButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? Bedside.accent.opacity(0.22) : Color.white.opacity(0.045))
-                        .overlay(Circle().stroke(isSelected ? Bedside.accent.opacity(0.34) : Bedside.sep.opacity(0.7), lineWidth: 0.8))
-                        .frame(width: 42, height: 42)
-
-                    Image(systemName: type.icon)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(isSelected ? Bedside.amber : Bedside.subtext)
-                        .frame(width: 42, height: 42)
-                }
+                Image(systemName: type.icon)
+                    .font(.system(size: 22, weight: .light))
+                    .foregroundStyle(isSelected ? Bedside.accent : Bedside.subtext)
+                    .frame(height: 30)
 
                 Text(type.rawValue)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 15, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? Bedside.text : Bedside.subtext)
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
 
                 Text(shortHint)
-                    .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(isSelected ? Bedside.amber.opacity(0.92) : Bedside.dim)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(isSelected ? Bedside.subtext : Bedside.dim)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 112)
+            .frame(height: 104)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isSelected ? Bedside.accent.opacity(0.13) : Color.white.opacity(0.035))
+                    .fill(isSelected ? Bedside.accent.opacity(0.08) : Color.white.opacity(0.03))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(isSelected ? Bedside.accent.opacity(0.34) : Bedside.sep.opacity(0.7), lineWidth: isSelected ? 1.1 : 0.7)
+                            .strokeBorder(isSelected ? Bedside.accent.opacity(0.7) : Color.clear, lineWidth: 1)
                     )
-                    .shadow(color: isSelected ? Bedside.accent.opacity(0.16) : .clear, radius: 12, x: 0, y: 5)
             }
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
@@ -790,7 +775,7 @@ private struct PickerRow: View {
     var body: some View {
         HStack(spacing: 12) {
             BedsideIconBadge(systemName: icon, color: Bedside.accent)
-            Text(title).font(.system(size: 17)).foregroundColor(Bedside.text)
+            Text(title).font(.system(size: 16)).foregroundColor(Bedside.text)
             Spacer()
             Menu {
                 ForEach(options, id: \.self) { option in
@@ -821,12 +806,12 @@ private struct SoundPickerRow: View {
     var body: some View {
         HStack(spacing: 12) {
             BedsideIconBadge(systemName: icon, color: Bedside.accent)
-            Text(title).font(.system(size: 17)).foregroundColor(Bedside.text)
+            Text(title).font(.system(size: 16)).foregroundColor(Bedside.text)
             Spacer()
             Button(action: onPreview) {
                 Image(systemName: "play.fill")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Bedside.amber)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Bedside.text)
                     .frame(width: 30, height: 28)
                     .background { LiquidGlassCapsule(style: .card, interactive: true) }
             }

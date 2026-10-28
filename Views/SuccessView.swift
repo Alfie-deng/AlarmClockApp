@@ -27,7 +27,7 @@ struct SuccessView: View {
 
     var body: some View {
         ZStack {
-            SuccessMorningBackdrop()
+            SuccessMorningBackdrop(dimmed: session.emergencyClosed)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -39,43 +39,39 @@ struct SuccessView: View {
                     onFeedback(session.mood, note)
                     onDone()
                 } label: {
-                    Text(session.emergencyClosed ? "知道了" : "完成")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color.black.opacity(0.82))
+                    PrimaryCapsuleLabel(title: session.emergencyClosed ? "知道了" : "完成")
                         .frame(maxWidth: 320)
-                        .padding(.vertical, 15)
                 }
                 .buttonStyle(.plain)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
-                )
-                .padding(.horizontal, 24)
-                .padding(.bottom, 126)
+                .padding(.horizontal, 28)
+                .padding(.bottom, 56)
             }
         }
         .preferredColorScheme(.dark)
     }
 
     private var successHero: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
+            Text(formattedCompletedTime)
+                .font(.clock(64))
+                .monospacedDigit()
+                .foregroundStyle(Bedside.text.opacity(0.92))
+
             Text(session.emergencyClosed ? "已紧急关闭" : "起床成功")
-                .font(.system(size: 44, weight: .bold))
-                .foregroundStyle(session.emergencyClosed ? Bedside.red : Bedside.text)
-                .shadow(color: .black.opacity(0.42), radius: 12, x: 0, y: 6)
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(Bedside.text)
 
             Text(session.emergencyClosed ? "这次先算赖床赢了" : "今天没有被床封印")
-                .font(.system(size: 21, weight: .semibold))
-                .foregroundStyle(session.emergencyClosed ? Bedside.red.opacity(0.86) : Bedside.amber)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(session.emergencyClosed ? Bedside.red : Bedside.subtext)
                 .multilineTextAlignment(.center)
-                .shadow(color: Bedside.accent.opacity(session.emergencyClosed ? 0 : 0.36), radius: 14)
 
             summaryLine
-                .padding(.top, 4)
+                .padding(.top, 10)
         }
         .frame(maxWidth: 390)
         .padding(.horizontal, 28)
-        .padding(.top, 72)
+        .padding(.top, 120)
     }
 
     private var emergencyMark: some View {
@@ -114,17 +110,10 @@ struct SuccessView: View {
                 .foregroundStyle(Bedside.dim)
             Text("连续 \(currentStreak) 天")
         }
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(session.emergencyClosed ? Bedside.red.opacity(0.82) : Bedside.text.opacity(0.78))
+        .font(.system(size: 13, weight: .regular))
+        .foregroundStyle(Bedside.subtext)
         .lineLimit(1)
         .minimumScaleFactor(0.68)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.black.opacity(0.20))
-                .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.12), lineWidth: 0.7))
-        )
     }
 
     private var formattedCompletedTime: String {
@@ -167,40 +156,81 @@ struct SuccessView: View {
     }
 }
 
+/// 抽象暖色日出：地平线下升起的一轮柔光，没有具象插画。
 private struct SuccessMorningBackdrop: View {
+    var dimmed: Bool = false
+
     var body: some View {
         GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            let horizon = height * 0.62
+
             ZStack(alignment: .top) {
-                Bedside.bg
-
-                Image("SuccessGeneratedBackground")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: proxy.size.width)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
                 LinearGradient(
                     colors: [
-                        Bedside.bg.opacity(0.74),
-                        Bedside.bg.opacity(0.24),
-                        .clear,
-                        .clear,
-                        Bedside.bg.opacity(0.18),
-                        Bedside.bg.opacity(0.92)
+                        Bedside.bg,
+                        Color(hex: "1E1610"),
+                        Color(hex: dimmed ? "2A1E16" : "4A2C18")
                     ],
                     startPoint: .top,
-                    endPoint: .bottom
+                    endPoint: UnitPoint(x: 0.5, y: 0.62)
                 )
 
-                LinearGradient(
-                    colors: [
-                        .black.opacity(0.22),
-                        .clear,
-                        .black.opacity(0.18)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
+                // 太阳光晕
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(hex: "F6C98A").opacity(dimmed ? 0.25 : 0.85),
+                                Bedside.accent.opacity(dimmed ? 0.15 : 0.45),
+                                Color(hex: "C8643A").opacity(dimmed ? 0.06 : 0.18),
+                                .clear
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: width * 0.75
+                        )
+                    )
+                    .frame(width: width * 1.5, height: width * 1.5)
+                    .position(x: width / 2, y: horizon + width * 0.08)
+
+                // 太阳本体
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(hex: "FBE3BC"), Color(hex: "F0B36E")],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: width * 0.42, height: width * 0.42)
+                    .opacity(dimmed ? 0.3 : 0.95)
+                    .position(x: width / 2, y: horizon + width * 0.06)
+
+                // 地平线以下：暖色倒影慢慢沉进底色
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(hex: dimmed ? "241A13" : "3A2416"),
+                                Color(hex: "1A130E"),
+                                Bedside.bg
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(height: height - horizon)
+                    .overlay(alignment: .top) {
+                        LinearGradient(
+                            colors: [.clear, Color(hex: "F6C98A").opacity(dimmed ? 0.12 : 0.45), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(height: 0.5)
+                    }
+                    .position(x: width / 2, y: horizon + (height - horizon) / 2)
             }
         }
     }

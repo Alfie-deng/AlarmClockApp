@@ -3,16 +3,25 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject var mgr: AlarmManager
-    @State private var tab = 0
+    @State private var tab = Self.debugInitialTab
     @State private var dismissedDebugScreen = false
+
+    private static var debugInitialTab: Int {
+        guard let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--debugTab"),
+              ProcessInfo.processInfo.arguments.indices.contains(index + 1),
+              let value = Int(ProcessInfo.processInfo.arguments[index + 1]) else {
+            return 0
+        }
+        return value
+    }
 
     init() {
         Self.configureSystemTabBar()
     }
 
     private static func configureSystemTabBar() {
-        let accent = UIColor(red: 1.0, green: 144.0 / 255.0, blue: 34.0 / 255.0, alpha: 1.0)
-        let unselected = UIColor.white.withAlphaComponent(0.82)
+        let accent = UIColor(red: 232.0 / 255.0, green: 162.0 / 255.0, blue: 90.0 / 255.0, alpha: 1.0)
+        let unselected = UIColor(red: 166.0 / 255.0, green: 155.0 / 255.0, blue: 142.0 / 255.0, alpha: 1.0)
 
         let tabBar = UITabBar.appearance()
         tabBar.itemPositioning = .centered
@@ -101,6 +110,8 @@ struct ContentView: View {
                     onCorrect: {},
                     onEmergencyClose: {}
                 )
+            } else if activeDebugScreen == "settings" {
+                AlarmSettingView()
             } else if activeDebugScreen == "success" {
                 SuccessView(
                     session: WakeSession(
@@ -218,7 +229,7 @@ struct ContentView: View {
                     Label("统计", systemImage: "chart.line.uptrend.xyaxis")
                 }
         }
-        .tint(Color(red: 1.0, green: 144.0 / 255.0, blue: 34.0 / 255.0))
+        .tint(Bedside.accent)
     }
 
 }
@@ -263,7 +274,7 @@ private struct AlarmTabView: View {
                             nextScheduledAlarmDate: mgr.nextScheduledAlarmDate,
                             onRefresh: { mgr.refreshAlarmDeliverySnapshot() }
                         )
-                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 6, trailing: 20))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                     }
@@ -283,7 +294,7 @@ private struct AlarmTabView: View {
                                     onEdit: { editAlarm = alarm },
                                     onToggle: { mgr.toggleAlarm(alarm) }
                                 )
-                                .listRowInsets(EdgeInsets(top: 7, leading: 20, bottom: 7, trailing: 20))
+                                .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -319,13 +330,13 @@ private struct AlarmListHeader: View {
     let onAdd: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 7) {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("闹钟")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(Bedside.text)
                 Text("管理你的起床挑战")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(Bedside.subtext)
             }
 
@@ -333,15 +344,15 @@ private struct AlarmListHeader: View {
 
             Button(action: onAdd) {
                 Image(systemName: "plus")
-                    .font(.system(size: 24, weight: .medium))
-                    .foregroundStyle(Bedside.amber)
-                    .frame(width: 54, height: 54)
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(Bedside.text)
+                    .frame(width: 46, height: 46)
                     .background { LiquidGlassCapsule(style: .card, interactive: true) }
             }
             .buttonStyle(.plain)
             .accessibilityLabel("新增闹钟")
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 4)
         .padding(.vertical, 12)
     }
 }
@@ -349,55 +360,24 @@ private struct AlarmListHeader: View {
 private struct AlarmEmptyCard: View {
     var body: some View {
         VStack(spacing: 14) {
-            BedsideIconBadge(systemName: "alarm.fill")
-                .scaleEffect(1.12)
+            Image(systemName: "alarm")
+                .font(.system(size: 28, weight: .light))
+                .foregroundStyle(Bedside.subtext)
 
             VStack(spacing: 6) {
                 Text("还没有已保存的闹钟")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Bedside.text)
-                Text("保存后的闹钟会在这里管理")
-                    .font(.system(size: 14, weight: .medium))
+                Text("点右上角 + 添加一个")
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(Bedside.subtext)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
-        .background { LiquidGlassPanel(radius: 20, style: .hero) }
+        .padding(.vertical, 36)
+        .background { LiquidGlassPanel(radius: 22, style: .card) }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("还没有已保存的闹钟，保存后的闹钟会在这里管理")
-    }
-}
-
-private struct AddAlarmButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Bedside.accent.opacity(0.34), Bedside.amber.opacity(0.16)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(Circle().stroke(Bedside.accent.opacity(0.28), lineWidth: 1))
-                    .shadow(color: Bedside.accent.opacity(0.24), radius: 13, x: 0, y: 6)
-                    .shadow(color: .black.opacity(0.38), radius: 10, x: 0, y: 8)
-
-                Image(systemName: "plus")
-                    .font(.system(size: 34, weight: .black, design: .rounded))
-                    .foregroundStyle(Bedside.amber)
-                    .shadow(color: .black.opacity(0.72), radius: 2.5, x: 0, y: 2)
-                    .shadow(color: Bedside.accent.opacity(0.72), radius: 7, x: 0, y: 0)
-            }
-            .frame(width: 58, height: 58)
-            .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("新增闹钟")
+        .accessibilityLabel("还没有已保存的闹钟，点右上角加号添加一个")
     }
 }
 
@@ -406,139 +386,52 @@ private struct AlarmListCard: View {
     let onEdit: () -> Void
     let onToggle: () -> Void
 
+    private var primary: Color { alarm.isEnabled ? Bedside.text : Bedside.dim }
+    private var secondary: Color { alarm.isEnabled ? Bedside.subtext : Bedside.dim }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .lastTextBaseline, spacing: 8) {
-                        timeText
-                        periodText
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text(alarm.formattedTime)
+                        .font(.clock(50))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .foregroundStyle(primary)
+                    Text(alarm.formattedPeriod)
+                        .font(.clock(17, weight: .regular))
+                        .foregroundStyle(secondary)
                 }
 
-                Spacer(minLength: 8)
+                Text("\(alarm.label) · \(alarm.nextOccurrenceText())")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
-                VStack(alignment: .trailing, spacing: 5) {
-                    Text(alarm.label)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(alarm.isEnabled ? Bedside.text.opacity(0.92) : Bedside.dim)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-                    Text(alarm.nextOccurrenceText())
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(alarm.isEnabled ? Bedside.subtext : Bedside.dim)
-                        .lineLimit(1)
+                HStack(spacing: 5) {
+                    Image(systemName: alarm.challengeType.icon)
+                    Text(alarm.requiresChallenge ? alarm.challengeType.rawValue : "无挑战")
                 }
-                .padding(.top, 8)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(alarm.isEnabled ? Bedside.accent.opacity(0.9) : Bedside.dim)
             }
 
-            HStack(alignment: .center, spacing: 8) {
-                ChallengeStatusLine(title: alarm.challengeType.rawValue, icon: alarm.challengeType.icon)
-                    .opacity(alarm.isEnabled ? 1 : 0.55)
+            Spacer(minLength: 8)
 
-                Spacer(minLength: 8)
-
-                AlarmEditPill()
-
-                AlarmPowerPill(isEnabled: alarm.isEnabled, action: onToggle)
-            }
+            Toggle("", isOn: Binding(get: { alarm.isEnabled }, set: { _ in onToggle() }))
+                .labelsHidden()
+                .tint(Bedside.accent)
+                .accessibilityLabel(alarm.isEnabled ? "关闭闹钟" : "开启闹钟")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 15)
-        .background { LiquidGlassPanel(radius: 19, style: .card) }
-        .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .background { LiquidGlassPanel(radius: 22, style: .card) }
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .onTapGesture(perform: onEdit)
-        .opacity(alarm.isEnabled ? 1 : 0.68)
         .accessibilityAction(named: "编辑闹钟", onEdit)
-    }
-
-    private var timeText: some View {
-        Text(alarm.formattedTime)
-            .font(.system(size: 52, weight: .light, design: .rounded))
-            .monospacedDigit()
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(alarm.isEnabled ? Bedside.text : Bedside.dim)
-    }
-
-    private var periodText: some View {
-        Text(alarm.formattedPeriod)
-            .font(.system(size: 15, weight: .medium))
-            .foregroundStyle(alarm.isEnabled ? Bedside.subtext : Bedside.dim)
-            .padding(.bottom, 10)
-    }
-}
-
-private struct AlarmPowerPill: View {
-    let isEnabled: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: isEnabled ? "power.circle.fill" : "power.circle")
-                    .font(.system(size: 13, weight: .bold))
-                Text(isEnabled ? "开启" : "关闭")
-                    .font(.system(size: 12, weight: .bold))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(isEnabled ? Bedside.amber : Bedside.dim)
-            .frame(width: 78, height: 30)
-            .background {
-                Capsule(style: .continuous)
-                    .fill((isEnabled ? Bedside.accent : Bedside.dim).opacity(isEnabled ? 0.14 : 0.10))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke((isEnabled ? Bedside.amber : Bedside.dim).opacity(isEnabled ? 0.22 : 0.18), lineWidth: 0.7)
-                    )
-            }
-            .contentShape(Capsule(style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(isEnabled ? "关闭闹钟" : "开启闹钟")
-    }
-}
-
-private struct ChallengeStatusLine: View {
-    let title: String
-    let icon: String
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-                .frame(width: 15, alignment: .center)
-            Text("挑战 · \(title)")
-                .font(.system(size: 13, weight: .semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.86)
-        }
-        .foregroundStyle(Bedside.amber.opacity(0.92))
-        .frame(height: 30)
-        .allowsHitTesting(false)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("当前挑战：\(title)")
-        .accessibilityAddTraits(.isStaticText)
-    }
-}
-
-private struct AlarmEditPill: View {
-    var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "slider.horizontal.3")
-                .font(.system(size: 12, weight: .bold))
-            Text("详情")
-                .font(.system(size: 12, weight: .bold))
-        }
-        .foregroundStyle(Bedside.amber)
-        .frame(minWidth: 66)
-        .frame(height: 30)
-        .padding(.horizontal, 8)
-        .background { LiquidGlassCapsule(style: .card, interactive: true) }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 }
 

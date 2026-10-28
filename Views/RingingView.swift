@@ -24,51 +24,35 @@ struct RingingIntroView: View {
                 Spacer(minLength: 24)
 
                 Text("起床闹钟")
-                    .font(.system(size: 21, weight: .bold))
-                    .foregroundStyle(Bedside.text)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
 
                 Text(timeText)
-                    .font(.system(size: 96, weight: .light, design: .rounded))
+                    .font(.clock(108))
                     .monospacedDigit()
-                    .glow(Bedside.amber)
-                    .padding(.top, 20)
+                    .foregroundStyle(Bedside.text)
+                    .padding(.top, 8)
 
                 BedsidePill(text: "挑战模式：\(challengeName)", icon: "shield.checkered")
                     .padding(.top, 10)
 
                 Spacer()
 
-                VStack(spacing: 18) {
-                    BedsideIconBadge(systemName: "alarm.waves.left.and.right.fill")
-                        .scaleEffect(1.3)
-
+                VStack(spacing: 20) {
                     VStack(spacing: 8) {
                         Text("完成挑战才能关闭闹钟")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(Bedside.text)
                         Text("开始挑战，让大脑先开机")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 14, weight: .regular))
                             .foregroundStyle(Bedside.subtext)
                     }
                     .multilineTextAlignment(.center)
 
                     Button(action: onStartChallenge) {
-                        HStack(spacing: 10) {
-                            Text("开始挑战")
-                                .font(.system(size: 17, weight: .semibold))
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .bold))
-                        }
-                        .foregroundStyle(Color.black.opacity(0.82))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        )
+                        PrimaryCapsuleLabel(title: "开始挑战")
                     }
                     .buttonStyle(.plain)
-                    .padding(.top, 4)
                 }
                 .padding(24)
                 .ringingPanel(radius: 24)
@@ -83,7 +67,7 @@ struct RingingIntroView: View {
                         Text("稍后提醒")
                             .font(.system(size: 14, weight: .medium))
                     }
-                    .foregroundColor(Bedside.dim)
+                    .foregroundColor(Bedside.subtext)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
                     .background { LiquidGlassCapsule(style: .card, interactive: true) }
@@ -144,14 +128,14 @@ struct RingingView: View {
 
                 // 发光时间
                 Text("起床闹钟")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Bedside.text)
-                    .padding(.bottom, 20)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Bedside.subtext)
+                    .padding(.bottom, 4)
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text(RingingDateFormatters.time.string(from: context.date))
-                        .font(.system(size: 82, weight: .light, design: .rounded))
+                        .font(.clock(84))
                         .monospacedDigit()
-                        .glow(Bedside.amber)
+                        .foregroundStyle(Bedside.text)
                 }
                 if shouldShowExternalChallengePill {
                     BedsidePill(text: "挑战模式：\(record.type.rawValue)", icon: "shield.checkered")
@@ -175,7 +159,7 @@ struct RingingView: View {
                     }
                     .foregroundColor(isTestMode ? Bedside.subtext : Bedside.dim)
                     .padding(.horizontal, 24).padding(.vertical, 12)
-                    .background { LiquidGlassCapsule(style: .card, interactive: true) }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .padding(.bottom, 40)
@@ -226,7 +210,7 @@ struct RingingView: View {
             }
             Button("关闭闹钟") { onCorrect() }
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.82))
+                .foregroundStyle(Bedside.onAccent)
                 .padding(.horizontal, 22)
                 .padding(.vertical, 12)
                 .background(Capsule(style: .continuous).fill(Bedside.accent))
@@ -252,7 +236,7 @@ struct RingingView: View {
             }
             Button("先关闭闹钟") { onCorrect() }
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.82))
+                .foregroundStyle(Bedside.onAccent)
                 .padding(.horizontal, 22)
                 .padding(.vertical, 12)
                 .background(Capsule(style: .continuous).fill(Bedside.accent))
@@ -273,12 +257,11 @@ struct RingingView: View {
 
             VStack(spacing: 18) {
                 Text(currentQuestion?.prompt ?? record.question)
-                    .font(.system(size: 72, weight: .bold, design: .rounded))
+                    .font(.clock(60, weight: .regular))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.44)
                     .foregroundColor(Bedside.text)
-                    .shadow(color: Bedside.amber.opacity(0.18), radius: 10)
 
                 answerField
             }
@@ -296,7 +279,7 @@ struct RingingView: View {
                 HStack(spacing: 14) {
                     keyBtn(icon: "delete.left") { if !answer.isEmpty { answer.removeLast() } }
                     keyBtn("0") { answer.append("0") }
-                    keyBtn(icon: "checkmark") { checkAnswer() }.disabled(answer.isEmpty)
+                    keyBtn(icon: "checkmark", disabled: answer.isEmpty) { checkAnswer() }.disabled(answer.isEmpty)
                 }
             }
             .padding(.top, 2)
@@ -320,16 +303,7 @@ struct RingingView: View {
     }
 
     private func challengeModePill(_ title: String) -> some View {
-        Label("挑战模式：\(title)", systemImage: "shield.checkered")
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(Bedside.amber)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Bedside.accent.opacity(0.14))
-                    .overlay(Capsule().stroke(Bedside.accent.opacity(0.24), lineWidth: 0.7))
-            )
+        BedsidePill(text: "挑战 · \(title)", icon: "shield.checkered")
     }
 
     private func keyBtn(_ title: String? = nil, icon: String? = nil, disabled: Bool = false, action: @escaping () -> Void) -> some View {
@@ -338,45 +312,21 @@ struct RingingView: View {
         return Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: isConfirm
-                                ? [Bedside.accent.opacity(disabled ? 0.16 : 0.72), Bedside.amber.opacity(disabled ? 0.10 : 0.42)]
-                                : [Color.white.opacity(disabled ? 0.035 : 0.09), Color.white.opacity(disabled ? 0.02 : 0.045)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                isConfirm
-                                    ? Bedside.accent.opacity(disabled ? 0.12 : 0.32)
-                                    : Color.white.opacity(disabled ? 0.06 : 0.13),
-                                lineWidth: 0.8
-                            )
-                    )
-                    .background(
-                        Circle()
-                            .fill(Color.black.opacity(0.18))
-                            .blur(radius: 7)
-                            .offset(y: 5)
-                    )
-                    .shadow(color: isConfirm ? Bedside.accent.opacity(disabled ? 0.04 : 0.18) : .black.opacity(0.18), radius: 10, x: 0, y: 5)
-                    .opacity(disabled ? 0.52 : 1)
+                    .fill(isConfirm ? Bedside.accent : Color.white.opacity(0.06))
+                    .opacity(disabled ? 0.4 : 1)
 
                 if let t = title {
                     Text(t)
-                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                        .font(.system(size: 28, weight: .regular))
                         .monospacedDigit()
                         .foregroundColor(disabled ? Bedside.dim : Bedside.text)
                 } else if let i = icon {
                     Image(systemName: i)
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(i == "checkmark" ? Bedside.text.opacity(disabled ? 0.38 : 0.92) : Bedside.subtext)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(isConfirm ? Bedside.onAccent : Bedside.subtext)
                 }
             }
-            .frame(width: 80, height: 80)
+            .frame(width: 76, height: 76)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -385,9 +335,9 @@ struct RingingView: View {
     private var answerField: some View {
         HStack(spacing: 10) {
             Text(answer.isEmpty ? "输入答案" : answer)
-                .font(.system(size: answer.isEmpty ? 18 : 34, weight: .semibold, design: .rounded))
+                .font(answer.isEmpty ? .system(size: 17, weight: .regular) : .clock(34, weight: .regular))
                 .monospacedDigit()
-                .foregroundStyle(answer.isEmpty ? Bedside.dim : Bedside.amber)
+                .foregroundStyle(answer.isEmpty ? Bedside.dim : Bedside.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
                 .frame(maxWidth: .infinity, minHeight: 56)
@@ -404,10 +354,10 @@ struct RingingView: View {
         .padding(.horizontal, 16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.black.opacity(0.22))
+                .fill(Color.black.opacity(0.25))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(answer.isEmpty ? Bedside.sep : Bedside.accent.opacity(0.36), lineWidth: 0.8)
+                        .strokeBorder(answer.isEmpty ? Bedside.sep : Bedside.accent.opacity(0.5), lineWidth: 0.5)
                 )
         )
     }
@@ -423,10 +373,9 @@ struct RingingView: View {
 
             VStack(spacing: 6) {
                 Text("\(shakeController.count)/\(shakeController.requiredCount)")
-                    .font(.system(size: 52, weight: .bold, design: .rounded))
+                    .font(.clock(56, weight: .regular))
                     .monospacedDigit()
                     .foregroundStyle(Bedside.text)
-                    .shadow(color: Bedside.amber.opacity(0.18), radius: 10)
 
                 Text(shakeController.isMotionAvailable ? "用力摇晃手机" : "模拟器不支持传感器")
                     .font(.system(size: 14, weight: .semibold))
@@ -435,22 +384,19 @@ struct RingingView: View {
 
             ZStack(alignment: .leading) {
                 Capsule(style: .continuous)
-                    .fill(Color.black.opacity(0.26))
-                    .frame(height: 18)
-                    .overlay(Capsule().stroke(Bedside.sep, lineWidth: 0.7))
+                    .fill(Color.white.opacity(0.08))
+                    .frame(height: 6)
 
                 Capsule(style: .continuous)
-                    .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .leading, endPoint: .trailing))
-                    .frame(maxWidth: .infinity)
-                    .frame(width: max(18, CGFloat(shakeController.progress) * 260), height: 18)
-                    .shadow(color: Bedside.accent.opacity(0.28), radius: 10)
+                    .fill(Bedside.accent)
+                    .frame(width: max(6, CGFloat(shakeController.progress) * 260), height: 6)
             }
             .frame(maxWidth: .infinity)
 
             VStack(spacing: 7) {
                 Image(systemName: "iphone.gen3.radiowaves.left.and.right")
-                    .font(.system(size: 64, weight: .light))
-                    .foregroundStyle(Bedside.accent)
+                    .font(.system(size: 56, weight: .ultraLight))
+                    .foregroundStyle(Bedside.subtext)
                     .symbolEffect(.pulse, options: .repeating, value: shakeController.count)
                 Text(shakeController.isRunning ? "传感器监听中" : "准备开始")
                     .font(.system(size: 14, weight: .medium))
@@ -464,8 +410,8 @@ struct RingingView: View {
                     shakeController.recordMockShake()
                 } label: {
                     Label("模拟摇动一次", systemImage: "hand.raised.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Bedside.amber)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Bedside.text)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 11)
                         .background { LiquidGlassCapsule(style: .card, interactive: true) }
@@ -555,8 +501,8 @@ struct RingingView: View {
             if speechController.canMockComplete {
                 Button { speechController.mockRecognizeTargetPhrase() } label: {
                     Label("模拟念出目标语句", systemImage: "text.bubble.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Bedside.amber)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Bedside.text)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 11)
                         .background { LiquidGlassCapsule(style: .card, interactive: true) }
@@ -598,12 +544,7 @@ struct RingingView: View {
                 photoMissionStage(target: target)
 
                 Button { cameraController.requestCameraAccessThenOpen() } label: {
-                    Label("拍摄", systemImage: "camera.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Color.black.opacity(0.82))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Capsule(style: .continuous).fill(Bedside.accent))
+                    PrimaryCapsuleLabel(title: "拍摄", icon: "camera.fill")
                 }
                 .buttonStyle(.plain)
 
@@ -637,30 +578,19 @@ struct RingingView: View {
     private func photoMissionStage(target: String) -> some View {
         VStack(spacing: 18) {
             ZStack {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Bedside.accent.opacity(0.20),
-                                Color.white.opacity(0.04)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(Bedside.accent.opacity(0.22), lineWidth: 0.9)
-                    )
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.black.opacity(0.25))
 
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 88, weight: .light))
-                    .foregroundStyle(Bedside.accent.opacity(0.13))
-                    .offset(y: -8)
+                Image(systemName: "viewfinder")
+                    .font(.system(size: 180, weight: .ultraLight))
+                    .foregroundStyle(Bedside.accent.opacity(0.35))
 
-                VStack(spacing: 10) {
+                VStack(spacing: 6) {
+                    Text("去拍")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(Bedside.subtext)
                     Text(target)
-                        .font(.system(size: 42, weight: .black, design: .rounded))
+                        .font(.system(size: 34, weight: .semibold))
                         .foregroundStyle(Bedside.text)
                         .lineLimit(1)
                         .minimumScaleFactor(0.74)
@@ -682,7 +612,7 @@ struct RingingView: View {
                 .clipped()
                 .background(Color.black.opacity(0.24))
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Bedside.accent.opacity(0.26), lineWidth: 0.9))
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5))
 
             Text(target)
                 .font(.system(size: 15, weight: .bold))
@@ -728,8 +658,8 @@ struct RingingView: View {
     private var photoActionRow: some View {
         Button { cameraController.retake() } label: {
             Label("重拍", systemImage: "arrow.triangle.2.circlepath.camera")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Bedside.amber)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Bedside.text)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background { LiquidGlassCapsule(style: .card, interactive: true) }
@@ -871,9 +801,9 @@ struct RingingAmbientBackground: View {
             VStack {
                 Spacer()
                 Circle()
-                    .fill(Bedside.accent.opacity(0.26))
-                    .frame(width: 280, height: 120)
-                    .blur(radius: 45)
+                    .fill(Bedside.accent.opacity(0.12))
+                    .frame(width: 320, height: 140)
+                    .blur(radius: 60)
                     .offset(y: 58)
             }
         }

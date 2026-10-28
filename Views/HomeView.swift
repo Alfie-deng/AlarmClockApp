@@ -148,9 +148,9 @@ private struct BedroomBackdrop: View {
                 .overlay(
                     LinearGradient(
                         colors: [
-                            Color(hex: "06101C").opacity(0.1),
-                            Color(hex: "05070B").opacity(0.18),
-                            Color(hex: "05070B").opacity(0.88)
+                            Color(hex: "140E09").opacity(0.12),
+                            Bedside.bg.opacity(0.22),
+                            Bedside.bg.opacity(0.9)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -466,52 +466,7 @@ private struct PrimaryCreateAlarmButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text("创建挑战闹钟")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.black.opacity(0.82))
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background {
-                    ZStack {
-                        Capsule(style: .continuous)
-                            .fill(Bedside.accent.opacity(0.56))
-                            .blur(radius: 18)
-                            .offset(y: 8)
-
-                        Capsule(style: .continuous)
-                            .fill(Bedside.amber.opacity(0.34))
-                            .blur(radius: 8)
-                            .offset(y: -2)
-
-                        Capsule(style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(hex: "FFD481"),
-                                        Bedside.amber,
-                                        Bedside.accent
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-
-                        Capsule(style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.white.opacity(0.38), .clear],
-                                    startPoint: .top,
-                                    endPoint: .center
-                                )
-                            )
-                            .padding(.horizontal, 2)
-                            .padding(.top, 1)
-                            .padding(.bottom, 18)
-                    }
-                }
-                .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.30), lineWidth: 0.8))
-                .shadow(color: Bedside.accent.opacity(0.46), radius: 22, x: 0, y: 10)
-                .shadow(color: Bedside.amber.opacity(0.28), radius: 34, x: 0, y: 0)
+            PrimaryCapsuleLabel(title: "创建挑战闹钟")
         }
         .buttonStyle(.plain)
         .accessibilityLabel("创建挑战闹钟")
@@ -526,14 +481,15 @@ private struct HeaderBar: View {
                     Image("SunriseMark")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 40, height: 30)
+                        .frame(width: 30, height: 22)
+                        .opacity(0.9)
                         .accessibilityHidden(true)
                     Text("起床挑战")
-                        .font(.system(size: 27, weight: .bold))
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(Bedside.text)
                 }
                 Text("不完成挑战，别想关闹钟")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(Bedside.subtext)
             }
 
@@ -564,72 +520,66 @@ private struct AlarmHeroCard: View {
             .joined(separator: "，")
     }
 
-    var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            LiquidGlassPanel(radius: 22, style: .hero, interactive: alarm != nil)
-                .allowsHitTesting(false)
+    private var eyebrowText: String {
+        dateText.isEmpty ? "下一个闹钟" : "下一个闹钟 · \(dateText)"
+    }
 
+    var body: some View {
+        Group {
             if alarm == nil {
                 emptyHeroContent
                     .padding(20)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 204)
+                    .background { LiquidGlassPanel(radius: 24, style: .card) }
             } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 8) {
-                        Text("下一个闹钟")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Bedside.text.opacity(0.94))
-
-                        Text(statusText)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(Bedside.green)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(Bedside.green.opacity(0.14))
-                                    .overlay(Capsule().stroke(Bedside.green.opacity(0.18), lineWidth: 0.6))
-                            )
-                    }
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(eyebrowText)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(Bedside.subtext)
 
                     HStack(alignment: .lastTextBaseline, spacing: 8) {
                         HeroTimeText(timeText)
-                            .minimumScaleFactor(0.62)
-                            .glow(Bedside.amber)
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(1)
+                            .foregroundStyle(Bedside.text)
 
                         Text(periodText)
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(Bedside.amber.opacity(0.86))
-                            .padding(.bottom, 20)
+                            .font(.clock(24, weight: .regular))
+                            .foregroundStyle(Bedside.subtext)
                     }
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        if !dateText.isEmpty {
-                            Text(dateText)
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(Bedside.subtext)
+                    HStack(alignment: .center, spacing: 8) {
+                        Label(challengeText, systemImage: challengeIcon)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Bedside.accent)
+                            .lineLimit(1)
+
+                        Text("· \(labelText)")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(Bedside.subtext)
+                            .lineLimit(1)
+
+                        Spacer(minLength: 8)
+
+                        Button(action: onCancel) {
+                            Text("取消")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Bedside.text)
+                                .padding(.horizontal, 18)
+                                .frame(height: 34)
+                                .background { LiquidGlassCapsule(style: .card, interactive: true) }
                         }
-
-                        HStack(alignment: .center, spacing: 8) {
-                            heroPill(challengeText, icon: challengeIcon)
-
-                            Spacer()
-
-                            Button(action: onCancel) {
-                                heroPill("取消", icon: "bell.slash.fill")
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("取消闹钟")
-                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("取消闹钟")
                     }
+                    .padding(.top, 4)
                 }
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: alarm == nil ? 204 : 258)
-        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
@@ -650,41 +600,13 @@ private struct AlarmHeroCard: View {
             }
             .multilineTextAlignment(.center)
 
-            HStack(spacing: 10) {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                Text("创建闹钟")
-                    .font(.system(size: 15, weight: .bold))
-            }
-            .foregroundStyle(Color.black.opacity(0.80))
-            .padding(.horizontal, 24)
-            .padding(.vertical, 13)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(LinearGradient(colors: [Bedside.amber, Bedside.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
-            )
-            .overlay(Capsule(style: .continuous).stroke(Color.white.opacity(0.22), lineWidth: 0.6))
-            .shadow(color: Bedside.accent.opacity(0.22), radius: 12, x: 0, y: 5)
+            PrimaryCapsuleLabel(title: "创建闹钟", icon: "plus")
+                .frame(maxWidth: 200)
 
             Spacer(minLength: 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
-    private func heroPill(_ title: String, icon: String) -> some View {
-        Label(title, systemImage: icon)
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(Bedside.amber)
-            .lineLimit(1)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Bedside.accent.opacity(0.14))
-                    .overlay(Capsule().stroke(Bedside.accent.opacity(0.12), lineWidth: 0.6))
-            )
-    }
-
 }
 
 private struct EmptyHeroAddButton: View {
@@ -733,7 +655,7 @@ private struct HeroTimeText: View {
                 Text(value)
             }
         }
-        .font(.system(size: 116, weight: .light, design: .rounded))
+        .font(.clock(112))
         .monospacedDigit()
         .accessibilityLabel(value)
     }
@@ -748,67 +670,39 @@ private struct WakeCountdownBatteryCard: View {
         let state = batteryState(at: now)
 
         return VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("睡眠余额", systemImage: "moon.zzz.fill")
-                        .font(.system(size: 13, weight: .semibold))
+                HStack(alignment: .firstTextBaseline) {
+                    Text("睡眠余额")
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundStyle(Bedside.subtext)
                     Spacer()
                     Text(state.remainingText)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.system(size: 14, weight: .medium))
                         .monospacedDigit()
-                        .foregroundStyle(Bedside.amber)
+                        .foregroundStyle(Bedside.text)
                 }
 
                 GeometryReader { proxy in
-                    let fillWidth = state.progress > 0 ? max(22, proxy.size.width * state.progress) : 0
+                    let fillWidth = state.progress > 0 ? max(6, proxy.size.width * state.progress) : 0
 
                     ZStack(alignment: .leading) {
                         Capsule(style: .continuous)
-                            .fill(Color.black.opacity(0.28))
-                            .overlay(Capsule().stroke(Bedside.accent.opacity(0.24), lineWidth: 0.8))
-                            .shadow(color: Bedside.accent.opacity(0.12), radius: 10, x: 0, y: 0)
-
+                            .fill(Color.white.opacity(0.08))
                         Capsule(style: .continuous)
-                            .fill(Bedside.accent.opacity(0.26))
+                            .fill(Bedside.accent)
                             .frame(width: fillWidth)
-                            .blur(radius: 10)
-                            .opacity(0.95)
-
-                        Capsule(style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Bedside.accent, Bedside.amber, Bedside.accent],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: fillWidth)
-                            .shadow(color: Bedside.accent.opacity(0.72), radius: 12, x: 0, y: 0)
-                            .shadow(color: Bedside.amber.opacity(0.36), radius: 22, x: 0, y: 0)
-
-                        Capsule(style: .continuous)
-                            .fill(.white.opacity(0.22))
-                            .frame(width: max(16, fillWidth * 0.72), height: 4)
-                            .offset(x: 12, y: -14)
-                            .blur(radius: 2)
-                            .opacity(state.progress > 0 ? 0.55 : 0)
-
-                        Text(state.copy)
-                            .font(.system(size: 14.5, weight: .bold))
-                            .foregroundStyle(Bedside.text)
-                            .shadow(color: .black.opacity(0.42), radius: 1.6, x: 0, y: 1)
-                            .shadow(color: Bedside.accent.opacity(0.35), radius: 3.5, x: 0, y: 0)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-                            .padding(.horizontal, 14)
-                            .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
-                .frame(height: 52)
+                .frame(height: 4)
+
+                Text(state.copy)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(Bedside.subtext)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 20)
         .padding(.vertical, 18)
-        .background { LiquidGlassPanel(radius: 18, style: .card) }
+        .background { LiquidGlassPanel(radius: 22, style: .card) }
         .accessibilityElement(children: .combine)
         .task {
             while !Task.isCancelled {
