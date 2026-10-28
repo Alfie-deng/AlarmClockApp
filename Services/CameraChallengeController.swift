@@ -154,12 +154,9 @@ final class CameraChallengeController: ObservableObject {
                 let observations = request.results ?? []
                 let labels = observations.map(\.identifier)
                 let bestMatch = observations
-                    .filter { observation in
-                        let identifier = observation.identifier.lowercased()
-                        return aliases.contains { identifier.contains($0) }
-                    }
+                    .filter { aliases.contains($0.identifier.lowercased()) }
                     .max { $0.confidence < $1.confidence }
-                if let bestMatch, bestMatch.confidence >= 0.08 {
+                if let bestMatch, bestMatch.confidence >= Self.matchConfidenceThreshold {
                     return .matched(labels: labels, identifier: bestMatch.identifier, confidence: bestMatch.confidence)
                 }
                 return .rejected(
@@ -199,18 +196,20 @@ final class CameraChallengeController: ObservableObject {
         }
     }
 
-    private static func aliases(for targetLabel: String) -> [String] {
+    /// 识别把握低于这个值就算没拍到，避免随手拍一张就过关。
+    nonisolated static let matchConfidenceThreshold: Float = 0.25
+
+    /// 只收 Vision 分类里的精确标签，不做模糊包含（否则 "door" 会匹配到 "outdoor"）。
+    nonisolated static func aliases(for targetLabel: String) -> [String] {
         switch Alarm.normalizedPhotoTarget(targetLabel) {
         case "床头灯":
-            return ["lamp", "lampshade", "light", "desk lamp", "table lamp", "nightstand"]
+            return ["lamp", "light_bulb"]
         case "洗手台":
-            return ["sink", "basin", "bathroom", "washbasin", "faucet"]
+            return ["washbasin", "bathroom_faucet"]
         case "书桌":
-            return ["desk", "table", "office", "computer", "keyboard"]
-        case "牙刷":
-            return ["toothbrush", "tooth paste", "toothpaste"]
+            return ["desk", "computer_keyboard", "computer_monitor"]
         case "门":
-            return ["door", "doorknob", "handle", "doorway"]
+            return ["door"]
         default:
             return ["lamp"]
         }

@@ -39,20 +39,23 @@ If launch fails with `device ... Locked`, unlock the iPhone and rerun only the f
 
 ## Current Features
 
+- Minimum iOS 26. Alarms ring through AlarmKit (system alarms: lock-screen alert, rings through silent mode and Focus).
 - Dark bedside visual system with iOS 26 Liquid Glass panels.
 - Alarm list, add/edit alarm flow, home next-alarm card, and stats tab.
-- Repeat-day scheduling is backed by local notification weekday triggers.
-- Notification authorization status is surfaced on the home screen when it blocks delivery.
+- Repeat-day scheduling is backed by AlarmKit weekly schedules; one-shot alarms switch themselves off after ringing.
+- Tapping stop on a challenge alarm opens the challenge and arms a follow-up alarm (90s) that only stops being pushed back while the challenge screen is in the foreground. Completing the challenge or emergency close clears all follow-ups.
+- Emergency close really closes the alarm and records a failed session.
+- AlarmKit authorization status is surfaced on the home screen when it blocks delivery.
 - Challenge types:
   - Math: supported, with configurable difficulty and question count.
   - Shake: supported with CoreMotion on device and a simulator mock button.
-  - Photo: supported with local Apple Vision image classification and a simulator mock button.
+  - Photo: supported with local Apple Vision image classification (exact labels, confidence ≥ 0.25; targets: 床头灯/洗手台/书桌/门) and a simulator mock button.
   - Speak: code retained, but not exposed as a formal user-facing mode.
   - Memory game: code retained, but not opened yet.
 - Math, shake, and photo are the formal challenge modes exposed in setup.
 - Completed challenges create wake session records.
 - Stats screen is driven by stored wake session data.
-- Local notification callbacks trigger challenges by `alarmId`.
+- AlarmKit stop/snooze buttons run App Intents that trigger challenges by `alarmId`.
 - App display name and notification identity are configured as `挑战闹钟`.
 - Unit tests cover repeat scheduling, challenge availability, shake tracking, snooze clamping, speech matching, and wake-session streak stats.
 
@@ -66,6 +69,7 @@ If launch fails with `device ... Locked`, unlock the iPhone and rerun only the f
 --debugPhotoMock
 --showNoChallenge
 --debugScheduleWeekdays
+--debugFireSoon   # real AlarmKit alarm 15s after launch
 --debugTriggerStoredAlarm
 --debugScreen math
 --debugScreen success
@@ -73,5 +77,4 @@ If launch fails with `device ... Locked`, unlock the iPhone and rerun only the f
 
 ## Notes
 
-This repository is intended as a private source backup and development repo.
-Do not publish it publicly.
+Personal-use project; not distributed through the App Store.

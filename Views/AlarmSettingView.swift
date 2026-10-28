@@ -294,7 +294,7 @@ struct AlarmSettingView: View {
                     didRunChallengeTest = true
                     testRecord = nil
                 },
-                onSnooze: {
+                onEmergencyClose: {
                     didRunChallengeTest = true
                     testRecord = nil
                 }

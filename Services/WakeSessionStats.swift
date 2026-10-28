@@ -36,6 +36,10 @@ enum WakeSessionStats {
         let days = Set(sessions.map { calendar.startOfDay(for: $0.completedAt) })
         var count = 0
         var cursor = calendar.startOfDay(for: date)
+        // 今天还没起床打卡时，从昨天往回数，别一早就显示连续 0 天。
+        if !days.contains(cursor) {
+            cursor = calendar.date(byAdding: .day, value: -1, to: cursor) ?? cursor
+        }
         while days.contains(cursor) {
             count += 1
             cursor = calendar.date(byAdding: .day, value: -1, to: cursor) ?? cursor

@@ -100,6 +100,32 @@ final class AlarmLogicTests: XCTestCase {
         XCTAssertEqual(WakeSessionStats.bestStreak(sessions: completed, calendar: calendar), 2)
     }
 
+    func testCurrentStreakKeepsYesterdayBeforeTodaysWakeUp() throws {
+        let monday = try date(year: 2026, month: 6, day: 1, hour: 7, minute: 30)
+        let tuesday = try date(year: 2026, month: 6, day: 2, hour: 7, minute: 30)
+        let wednesdayEarly = try date(year: 2026, month: 6, day: 3, hour: 5, minute: 0)
+        let sessions = [makeSession(completedAt: monday), makeSession(completedAt: tuesday)]
+
+        XCTAssertEqual(WakeSessionStats.currentStreak(sessions: sessions, endingOn: wednesdayEarly, calendar: calendar), 2)
+
+        let fridayEarly = try date(year: 2026, month: 6, day: 5, hour: 5, minute: 0)
+        XCTAssertEqual(WakeSessionStats.currentStreak(sessions: sessions, endingOn: fridayEarly, calendar: calendar), 0)
+    }
+
+    func testPhotoTargetsDropToothbrushAndMatchExactVisionLabels() {
+        XCTAssertFalse(Alarm.supportedPhotoTargets.contains("牙刷"))
+        XCTAssertEqual(Alarm.normalizedPhotoTarget("牙刷"), "洗手台")
+        XCTAssertEqual(Alarm.normalizedPhotoTarget("门"), "门")
+        XCTAssertEqual(Alarm.normalizedPhotoTarget("冰箱"), "床头灯")
+
+        let doorAliases = CameraChallengeController.aliases(for: "门")
+        XCTAssertTrue(doorAliases.contains("door"))
+        XCTAssertFalse(doorAliases.contains("outdoor"))
+        for target in Alarm.supportedPhotoTargets {
+            XCTAssertFalse(CameraChallengeController.aliases(for: target).isEmpty)
+        }
+    }
+
     private func makeSession(completedAt: Date, emergencyClosed: Bool = false) -> WakeSession {
         WakeSession(
             alarmId: nil,

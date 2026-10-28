@@ -276,11 +276,13 @@ struct Alarm: Identifiable, Codable, Equatable {
         min(max(minutes, 1), 30)
     }
 
-    static let supportedPhotoTargets = ["床头灯", "洗手台", "书桌", "牙刷", "门"]
+    static let supportedPhotoTargets = ["床头灯", "洗手台", "书桌", "门"]
 
     static func normalizedPhotoTarget(_ target: String) -> String {
         let trimmed = target.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "床头灯" }
+        // 系统识图没有「牙刷」这个类别，旧闹钟改成同在卫生间的洗手台。
+        if trimmed == "牙刷" { return "洗手台" }
         return supportedPhotoTargets.contains(trimmed) ? trimmed : "床头灯"
     }
 

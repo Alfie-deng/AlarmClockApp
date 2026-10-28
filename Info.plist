@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>用系统闹钟准时叫醒你，静音和专注模式下也会响。</string>
 	<key>NSCameraUsageDescription</key>
 	<string>用于拍摄起床挑战指定目标照片。</string>
 	<key>NSMicrophoneUsageDescription</key>

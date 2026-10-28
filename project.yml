@@ -2,13 +2,13 @@ name: AlarmClockApp
 options:
   bundleIdPrefix: com.alfie
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.0"
 
 targets:
   AlarmClockApp:
     type: application
     platform: iOS
-    deploymentTarget: "17.0"
+    deploymentTarget: "26.0"
     sources:
       - AlarmClockApp.swift
       - ContentView.swift
@@ -53,7 +53,7 @@ targets:
   AlarmClockAppTests:
     type: bundle.unit-test
     platform: iOS
-    deploymentTarget: "17.0"
+    deploymentTarget: "26.0"
     sources:
       - path: Tests
     dependencies:

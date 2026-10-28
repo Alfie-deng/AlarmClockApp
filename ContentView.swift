@@ -99,7 +99,7 @@ struct ContentView: View {
                         startedAt: Date()
                     ),
                     onCorrect: {},
-                    onSnooze: {}
+                    onEmergencyClose: {}
                 )
             } else if activeDebugScreen == "success" {
                 SuccessView(
@@ -129,7 +129,7 @@ struct ContentView: View {
                 RingingView(
                     record: challenge,
                     onCorrect: { mgr.completeChallenge() },
-                    onSnooze: { mgr.snooze() }
+                    onEmergencyClose: { mgr.emergencyClose() }
                 )
             }
         }
@@ -160,15 +160,16 @@ struct ContentView: View {
             await runDebugScheduleWeekdays()
         }
         .task {
+            guard ProcessInfo.processInfo.arguments.contains("--debugFireSoon") else { return }
+            await runDebugFireSoon()
+        }
+        .task {
             guard ProcessInfo.processInfo.arguments.contains("--debugTriggerStoredAlarm") else { return }
             await runDebugTriggerStoredAlarm()
         }
     }
 
     private func runDebugScheduleWeekdays() async {
-        let center = UNUserNotificationCenter.current()
-        center.removeAllPendingNotificationRequests()
-
         var components = DateComponents()
         components.hour = 7
         components.minute = 30
@@ -176,10 +177,18 @@ struct ContentView: View {
         let alarm = Alarm(time: time, repeatDays: [2, 4, 6])
         mgr.addAlarm(alarm)
 
-        try? await Task.sleep(for: .milliseconds(400))
-        let pending = await mgr.pendingNotificationIdentifiers()
-        let joined = pending.joined(separator: ",")
-        print("DEBUG_PENDING_NOTIFICATION_IDS=\(joined)")
+        try? await Task.sleep(for: .milliseconds(800))
+        let scheduled = SystemAlarmScheduler.scheduledIDs().map(\.uuidString).sorted()
+        print("DEBUG_SYSTEM_ALARM_IDS=\(scheduled.joined(separator: ",")) TARGET=\(alarm.id.uuidString) AUTH=\(mgr.alarmAuthorization)")
+    }
+
+    /// 15 秒后用真实系统闹钟响一次，用来验证锁屏响铃 → 去做挑战整条链路。
+    private func runDebugFireSoon() async {
+        let alarm = Alarm(time: Date(), challengeType: .math, label: "响铃验证", repeatDays: [])
+        mgr.addAlarm(alarm)
+        try? await Task.sleep(for: .seconds(2))
+        await SystemAlarmScheduler.scheduleFollowUp(for: alarm, after: 15)
+        print("DEBUG_FIRE_SOON_ID=\(alarm.id.uuidString) AUTH=\(mgr.alarmAuthorization)")
     }
 
     private func runDebugTriggerStoredAlarm() async {
@@ -249,9 +258,9 @@ private struct AlarmTabView: View {
                     Section {
                         AlarmReliabilityCard(
                             alarm: mgr.nextEnabledAlarm,
-                            notificationStatus: mgr.notificationStatus,
-                            pendingNotificationCount: mgr.pendingNotificationCount,
-                            nextPendingNotificationDate: mgr.nextPendingNotificationDate,
+                            authorization: mgr.alarmAuthorization,
+                            scheduledAlarmCount: mgr.scheduledAlarmCount,
+                            nextScheduledAlarmDate: mgr.nextScheduledAlarmDate,
                             onRefresh: { mgr.refreshAlarmDeliverySnapshot() }
                         )
                         .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 0, trailing: 20))
@@ -301,7 +310,6 @@ private struct AlarmTabView: View {
                 .presentationDetents([.large])
         }
         .onAppear {
-            mgr.refreshNotificationStatus()
             mgr.refreshAlarmDeliverySnapshot()
         }
     }

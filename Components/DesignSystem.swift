@@ -1,5 +1,5 @@
 import SwiftUI
-import UserNotifications
+import AlarmKit
 
 // MARK: - Dark Bedside 色板
 extension Color {
@@ -501,9 +501,9 @@ struct LiquidGlassCapsule: View {
 
 struct AlarmReliabilityCard: View {
     let alarm: Alarm?
-    let notificationStatus: UNAuthorizationStatus
-    let pendingNotificationCount: Int
-    let nextPendingNotificationDate: Date?
+    let authorization: AlarmKit.AlarmManager.AuthorizationState
+    let scheduledAlarmCount: Int
+    let nextScheduledAlarmDate: Date?
     let onRefresh: () -> Void
 
     var body: some View {
@@ -548,37 +548,37 @@ struct AlarmReliabilityCard: View {
     }
 
     private var statusIcon: String {
-        if notificationStatus.isBlockingAlarmDelivery { return "bell.slash.fill" }
+        if authorization.isBlockingAlarmDelivery { return "bell.slash.fill" }
         if alarm == nil { return "bell.badge.fill" }
-        return pendingNotificationCount > 0 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
+        return scheduledAlarmCount > 0 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
     }
 
     private var statusColor: Color {
-        if notificationStatus.isBlockingAlarmDelivery { return Bedside.red }
+        if authorization.isBlockingAlarmDelivery { return Bedside.red }
         if alarm == nil { return Bedside.amber }
-        return pendingNotificationCount > 0 ? Bedside.green : Bedside.red
+        return scheduledAlarmCount > 0 ? Bedside.green : Bedside.red
     }
 
     private var statusText: String {
-        if notificationStatus.isBlockingAlarmDelivery { return "未通过" }
+        if authorization.isBlockingAlarmDelivery { return "未通过" }
         if alarm == nil { return "待设置" }
-        return pendingNotificationCount > 0 ? "正常" : "待确认"
+        return scheduledAlarmCount > 0 ? "正常" : "待确认"
     }
 
     private var detailText: String {
         guard alarm != nil else {
-            return "暂无启用闹钟，添加后会检查系统通知排班。"
+            return "暂无启用闹钟，添加后会交给系统闹钟排班。"
         }
-        guard notificationStatus.allowsAlarmDelivery else {
-            return "系统通知未放行，闹钟可能不会准时响。"
+        guard authorization.allowsAlarmDelivery else {
+            return "系统闹钟权限未放行，闹钟不会响。"
         }
-        guard pendingNotificationCount > 0 else {
-            return "有启用闹钟，但暂未检测到待触发通知。"
+        guard scheduledAlarmCount > 0 else {
+            return "有启用闹钟，但系统闹钟里还没排上。"
         }
-        if let nextPendingNotificationDate {
-            return "已排班 \(pendingNotificationCount) 条，下一次 \(AlarmReliabilityDateFormatters.time.string(from: nextPendingNotificationDate))。"
+        if let nextScheduledAlarmDate {
+            return "系统闹钟已排 \(scheduledAlarmCount) 个，下一次 \(AlarmReliabilityDateFormatters.time.string(from: nextScheduledAlarmDate))。"
         }
-        return "已排班 \(pendingNotificationCount) 条，等待系统返回下一次时间。"
+        return "系统闹钟已排 \(scheduledAlarmCount) 个。"
     }
 }
 
@@ -589,24 +589,4 @@ private enum AlarmReliabilityDateFormatters {
         formatter.dateFormat = "M月d日 HH:mm"
         return formatter
     }()
-}
-
-extension UNAuthorizationStatus {
-    var isBlockingAlarmDelivery: Bool {
-        switch self {
-        case .denied, .ephemeral:
-            return true
-        default:
-            return false
-        }
-    }
-
-    var allowsAlarmDelivery: Bool {
-        switch self {
-        case .authorized, .provisional:
-            return true
-        default:
-            return false
-        }
-    }
 }

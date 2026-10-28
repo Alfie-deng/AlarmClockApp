@@ -1,5 +1,4 @@
 import SwiftUI
-import UserNotifications
 
 struct HomeView: View {
     @EnvironmentObject var mgr: AlarmManager
@@ -84,7 +83,7 @@ struct HomeView: View {
     @ViewBuilder
     private var homeContent: some View {
         VStack(spacing: 18) {
-            if mgr.notificationStatus.isBlockingAlarmDelivery {
+            if mgr.alarmAuthorization.isBlockingAlarmDelivery {
                 NotificationWarningCard()
             }
 
@@ -903,10 +902,10 @@ private struct NotificationWarningCard: View {
         HStack(spacing: 14) {
             BedsideIconBadge(systemName: "bell.slash.fill", color: Bedside.red)
             VStack(alignment: .leading, spacing: 5) {
-                Text("通知未开启")
+                Text("系统闹钟权限未开启")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Bedside.text)
-                Text("闹钟需要系统通知权限，否则不会准时响起。")
+                Text("去「设置 › 挑战闹钟」打开闹钟权限，否则不会响。")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Bedside.subtext)
             }

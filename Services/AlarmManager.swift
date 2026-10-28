@@ -1,3 +1,4 @@
+import AlarmKit
 import AudioToolbox
 import AVFoundation
 import Foundation
@@ -6,6 +7,8 @@ import Combine
 
 @MainActor
 class AlarmManager: ObservableObject {
+    static let shared = AlarmManager()
+
     @Published var alarms: [Alarm] = []
     @Published var currentChallenge: ChallengeRecord?
     @Published var isShowingChallenge: Bool = false
@@ -13,12 +16,16 @@ class AlarmManager: ObservableObject {
     @Published var wakeSessions: [WakeSession] = []
     @Published var lastCompletedSession: WakeSession?
     @Published var isShowingSuccess: Bool = false
-    @Published var notificationStatus: UNAuthorizationStatus = .notDetermined
-    @Published var pendingNotificationCount: Int = 0
-    @Published var nextPendingNotificationDate: Date?
+    @Published var alarmAuthorization: AlarmKit.AlarmManager.AuthorizationState = .notDetermined
+    @Published var scheduledAlarmCount: Int = 0
+    @Published var nextScheduledAlarmDate: Date?
 
     private let key = "savedAlarms"
     private let sessionsKey = "wakeSessions"
+    private let legacyNotificationsClearedKey = "legacyNotificationsCleared"
+    private var followUpHeartbeat: Task<Void, Never>?
+    /// 只在前台做挑战时推迟追响；切到后台就不再推，让追响按时响。
+    var isAppActive = true
 
     var nextEnabledAlarm: Alarm? {
         alarms
@@ -29,97 +36,78 @@ class AlarmManager: ObservableObject {
     init() {
         loadAlarms()
         loadWakeSessions()
-        refreshNotificationStatus()
+        clearLegacyNotificationsOnce()
+        alarmAuthorization = SystemAlarmScheduler.authorizationState
         refreshAlarmDeliverySnapshot()
-    }
-
-    func requestPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] _, _ in
-            Task { @MainActor in
-                self?.refreshNotificationStatus()
-            }
-        }
-    }
-
-    private func requestPermissionIfNeeded(then action: @escaping () -> Void) {
-        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
-            switch settings.authorizationStatus {
-            case .authorized, .provisional, .ephemeral:
-                Task { @MainActor in
-                    self?.notificationStatus = settings.authorizationStatus
-                    action()
-                }
-            case .notDetermined:
-                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in
-                    Task { @MainActor in
-                        self?.refreshNotificationStatus()
-                        if granted { action() }
-                    }
-                }
-            case .denied:
-                Task { @MainActor in
-                    self?.notificationStatus = .denied
-                }
-            @unknown default:
-                Task { @MainActor in
-                    self?.refreshNotificationStatus()
-                }
-            }
-        }
-    }
-
-    func refreshNotificationStatus() {
-        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
-            Task { @MainActor in
-                self?.notificationStatus = settings.authorizationStatus
+        Task { [weak self] in
+            for await _ in AlarmKit.AlarmManager.shared.alarmUpdates {
                 self?.refreshAlarmDeliverySnapshot()
             }
         }
+        Task { [weak self] in
+            for await state in AlarmKit.AlarmManager.shared.authorizationUpdates {
+                self?.alarmAuthorization = state
+            }
+        }
+    }
+
+    /// 回到前台时调用：补排系统里丢失的闹钟、清掉不认识的残留。
+    func syncSystemAlarms() async {
+        alarmAuthorization = SystemAlarmScheduler.authorizationState
+        guard alarmAuthorization.allowsAlarmDelivery else {
+            refreshAlarmDeliverySnapshot()
+            return
+        }
+        let scheduled = SystemAlarmScheduler.scheduledIDs()
+        let enabled = alarms.filter(\.isEnabled)
+        for alarm in enabled where !scheduled.contains(alarm.id) {
+            try? await SystemAlarmScheduler.schedule(alarm)
+        }
+        let known = Set(enabled.map(\.id)).union(SystemAlarmScheduler.followUpIDs)
+        for id in scheduled where !known.contains(id) {
+            SystemAlarmScheduler.cancel(id)
+        }
+        refreshAlarmDeliverySnapshot()
     }
 
     func refreshAlarmDeliverySnapshot() {
-        UNUserNotificationCenter.current().getPendingNotificationRequests { [weak self] requests in
-            let nextDate = requests
-                .compactMap { Self.nextTriggerDate(from: $0.trigger) }
-                .min()
-            Task { @MainActor in
-                self?.pendingNotificationCount = requests.count
-                self?.nextPendingNotificationDate = nextDate
-            }
-        }
+        alarmAuthorization = SystemAlarmScheduler.authorizationState
+        let scheduled = SystemAlarmScheduler.scheduledIDs()
+        let active = alarms.filter { $0.isEnabled && scheduled.contains($0.id) }
+        scheduledAlarmCount = active.count
+        nextScheduledAlarmDate = active.map { $0.nextOccurrence() }.min()
     }
 
     func addAlarm(_ alarm: Alarm) {
         alarms.append(alarm)
         saveAlarms()
-        scheduleNotificationAfterPermissionIfNeeded(for: alarm)
-        refreshAlarmDeliverySnapshotSoon()
+        scheduleSystemAlarm(for: alarm)
     }
 
     func updateAlarm(_ alarm: Alarm) {
         if let i = alarms.firstIndex(where: { $0.id == alarm.id }) {
             alarms[i] = alarm
             saveAlarms()
-            cancelNotification(for: alarm)
-            scheduleNotificationAfterPermissionIfNeeded(for: alarm)
-            refreshAlarmDeliverySnapshotSoon()
+            SystemAlarmScheduler.cancel(alarm.id)
+            scheduleSystemAlarm(for: alarm)
         }
     }
 
     func deleteAlarm(_ alarm: Alarm) {
         alarms.removeAll { $0.id == alarm.id }
         saveAlarms()
-        cancelNotification(for: alarm)
-        refreshAlarmDeliverySnapshotSoon()
+        SystemAlarmScheduler.cancel(alarm.id)
+        SystemAlarmScheduler.cancelFollowUp(for: alarm.id)
+        refreshAlarmDeliverySnapshot()
     }
 
     func toggleAlarm(_ alarm: Alarm) {
         if let i = alarms.firstIndex(where: { $0.id == alarm.id }) {
             alarms[i].isEnabled.toggle()
             saveAlarms()
-            if alarms[i].isEnabled { scheduleNotificationAfterPermissionIfNeeded(for: alarms[i]) }
-            else { cancelNotification(for: alarms[i]) }
-            refreshAlarmDeliverySnapshotSoon()
+            if alarms[i].isEnabled { scheduleSystemAlarm(for: alarms[i]) }
+            else { SystemAlarmScheduler.cancel(alarm.id) }
+            refreshAlarmDeliverySnapshot()
         }
     }
 
@@ -128,66 +116,90 @@ class AlarmManager: ObservableObject {
     private func saveWakeSessions() { if let d = try? JSONEncoder().encode(wakeSessions) { UserDefaults.standard.set(d, forKey: sessionsKey) } }
     private func loadWakeSessions() { if let d = UserDefaults.standard.data(forKey: sessionsKey), let decoded = try? JSONDecoder().decode([WakeSession].self, from: d) { wakeSessions = decoded } }
 
-    private func scheduleNotificationAfterPermissionIfNeeded(for alarm: Alarm) {
+    /// 旧版本用本地通知响铃，升级后清掉，避免和系统闹钟重复响。
+    private func clearLegacyNotificationsOnce() {
+        guard !UserDefaults.standard.bool(forKey: legacyNotificationsClearedKey) else { return }
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        UserDefaults.standard.set(true, forKey: legacyNotificationsClearedKey)
+    }
+
+    private func scheduleSystemAlarm(for alarm: Alarm) {
         guard alarm.isEnabled else { return }
-        requestPermissionIfNeeded { [weak self] in
-            self?.scheduleNotification(for: alarm)
+        Task {
+            alarmAuthorization = await SystemAlarmScheduler.requestAuthorizationIfNeeded()
+            guard alarmAuthorization.allowsAlarmDelivery else { return }
+            try? await SystemAlarmScheduler.schedule(alarm)
+            refreshAlarmDeliverySnapshot()
         }
     }
 
-    func scheduleNotification(for alarm: Alarm) {
-        cancelNotification(for: alarm)
-        guard alarm.isEnabled else { return }
+    // MARK: - 系统闹钟按钮回调
 
-        let content = UNMutableNotificationContent()
-        content.title = "起床挑战！"
-        content.body = alarm.requiresChallenge ? "完成\(alarm.challengeType.rawValue)才能关闭" : "该起床了"
-        content.sound = AlarmSoundPlayer.notificationSound(named: alarm.soundName)
-        content.userInfo = ["alarmId": alarm.id.uuidString]
-
-        let timeComponents = Calendar.current.dateComponents([.hour, .minute], from: alarm.time)
-        let weekdays = alarm.repeatWeekdays
-        if weekdays.isEmpty {
-            let next = alarm.nextOccurrence()
-            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: next)
-            let request = UNNotificationRequest(
-                identifier: alarm.id.uuidString,
-                content: content,
-                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            )
-            UNUserNotificationCenter.current().add(request) { [weak self] _ in
-                Task { @MainActor in self?.refreshAlarmDeliverySnapshot() }
-            }
+    /// 锁屏点了「去做挑战」：打开挑战页，同时排追响防止回去睡。
+    func handleChallengeAlarmStopped(alarmID: String) async {
+        guard let alarm = storedAlarm(id: alarmID) else { return }
+        triggerChallenge(for: alarm)
+        disableIfOneShot(alarm.id)
+        // 已经在做别的闹钟的挑战：那边的追响会兜底，这里不再另排。
+        guard triggeredAlarm?.id == alarm.id else {
+            SystemAlarmScheduler.cancelFollowUp(for: alarm.id)
             return
         }
+        await SystemAlarmScheduler.scheduleFollowUp(for: alarm, after: SystemAlarmScheduler.challengeFollowUpDelay)
+    }
 
-        for weekday in weekdays {
-            var components = DateComponents()
-            components.weekday = weekday
-            components.hour = timeComponents.hour
-            components.minute = timeComponents.minute
-            let identifier = notificationIdentifier(for: alarm, weekday: weekday)
-            let request = UNNotificationRequest(
-                identifier: identifier,
-                content: content,
-                trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-            )
-            UNUserNotificationCenter.current().add(request) { [weak self] _ in
-                Task { @MainActor in self?.refreshAlarmDeliverySnapshot() }
+    func handlePlainAlarmStopped(alarmID: String) {
+        guard let alarm = storedAlarm(id: alarmID) else { return }
+        SystemAlarmScheduler.cancelFollowUp(for: alarm.id)
+        disableIfOneShot(alarm.id)
+    }
+
+    func handleSnooze(alarmID: String) async {
+        guard let alarm = storedAlarm(id: alarmID) else { return }
+        disableIfOneShot(alarm.id)
+        await SystemAlarmScheduler.scheduleFollowUp(for: alarm, after: TimeInterval(max(1, alarm.snoozeMinutes) * 60))
+    }
+
+    private func storedAlarm(id: String) -> Alarm? {
+        guard let uuid = UUID(uuidString: id) else { return nil }
+        return alarms.first { $0.id == uuid }
+    }
+
+    /// 单次闹钟响过就关掉开关，和系统时钟一致。
+    private func disableIfOneShot(_ id: UUID) {
+        guard let i = alarms.firstIndex(where: { $0.id == id }),
+              alarms[i].repeatWeekdays.isEmpty,
+              alarms[i].isEnabled else { return }
+        alarms[i].isEnabled = false
+        saveAlarms()
+        SystemAlarmScheduler.cancel(id)
+        refreshAlarmDeliverySnapshot()
+    }
+
+    /// 挑战页开着时不断把追响往后推；一离开 App，追响就会按时响。
+    private func startFollowUpHeartbeat(for alarm: Alarm) {
+        followUpHeartbeat?.cancel()
+        guard alarms.contains(where: { $0.id == alarm.id }) else { return }
+        followUpHeartbeat = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled, let self, self.isShowingChallenge else { return }
+                guard self.isAppActive else { continue }
+                await SystemAlarmScheduler.scheduleFollowUp(for: alarm, after: SystemAlarmScheduler.challengeFollowUpDelay)
             }
         }
     }
 
-    func cancelNotification(for alarm: Alarm) {
-        let identifiers = [alarm.id.uuidString] + (1...7).map { notificationIdentifier(for: alarm, weekday: $0) } + [snoozeIdentifier(for: alarm)]
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
-        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: identifiers)
-        refreshAlarmDeliverySnapshotSoon()
+    private func finishChallengeAlarm(_ alarmID: UUID?) {
+        followUpHeartbeat?.cancel()
+        followUpHeartbeat = nil
+        SystemAlarmScheduler.cancelAllFollowUps()
+        guard let alarmID else { return }
+        disableIfOneShot(alarmID)
     }
 
-    func pendingNotificationIdentifiers() async -> [String] {
-        await UNUserNotificationCenter.current().pendingNotificationRequests().map(\.identifier).sorted()
-    }
+    // MARK: - 挑战流程
 
     @discardableResult
     func triggerChallenge(for alarm: Alarm) -> Bool {
@@ -195,15 +207,13 @@ class AlarmManager: ObservableObject {
         triggeredAlarm = alarm
         currentChallenge = alarm.requiresChallenge ? makeChallengeRecord(for: alarm) : makeDismissOnlyRecord(for: alarm)
         isShowingChallenge = true
+        startFollowUpHeartbeat(for: alarm)
         return true
     }
 
     @discardableResult
     func triggerChallenge(alarmId: String?) -> Bool {
-        guard let alarmId,
-              let uuid = UUID(uuidString: alarmId),
-              let alarm = alarms.first(where: { $0.id == uuid }),
-              alarm.isEnabled else {
+        guard let alarmId, let alarm = storedAlarm(id: alarmId), alarm.isEnabled else {
             return false
         }
         return triggerChallenge(for: alarm)
@@ -215,6 +225,30 @@ class AlarmManager: ObservableObject {
             return
         }
 
+        let session = recordSession(for: challenge, emergencyClosed: false)
+        finishChallengeAlarm(triggeredAlarm?.id ?? challenge.alarmId)
+        lastCompletedSession = session
+        isShowingChallenge = false
+        triggeredAlarm = nil
+        currentChallenge = nil
+        isShowingSuccess = true
+    }
+
+    /// 紧急关闭：真的关掉，不再追响，记一次失败。
+    func emergencyClose() {
+        if let challenge = currentChallenge {
+            recordSession(for: challenge, emergencyClosed: true)
+            finishChallengeAlarm(triggeredAlarm?.id ?? challenge.alarmId)
+        } else {
+            finishChallengeAlarm(triggeredAlarm?.id)
+        }
+        isShowingChallenge = false
+        triggeredAlarm = nil
+        currentChallenge = nil
+    }
+
+    @discardableResult
+    private func recordSession(for challenge: ChallengeRecord, emergencyClosed: Bool) -> WakeSession {
         let completedAt = Date()
         let session = WakeSession(
             alarmId: triggeredAlarm?.id ?? challenge.alarmId,
@@ -226,41 +260,11 @@ class AlarmManager: ObservableObject {
             durationSeconds: max(1, Int(completedAt.timeIntervalSince(challenge.startedAt))),
             mood: nil,
             note: "",
-            emergencyClosed: false
+            emergencyClosed: emergencyClosed
         )
         wakeSessions.insert(session, at: 0)
         saveWakeSessions()
-        lastCompletedSession = session
-        isShowingChallenge = false
-        triggeredAlarm = nil
-        currentChallenge = nil
-        isShowingSuccess = true
-    }
-
-    func snooze() {
-        if let challenge = currentChallenge {
-            let completedAt = Date()
-            let session = WakeSession(
-                alarmId: triggeredAlarm?.id ?? challenge.alarmId,
-                alarmLabel: triggeredAlarm?.label ?? "起床",
-                challengeType: challenge.type,
-                mathDifficulty: challenge.difficulty,
-                startedAt: challenge.startedAt,
-                completedAt: completedAt,
-                durationSeconds: max(1, Int(completedAt.timeIntervalSince(challenge.startedAt))),
-                mood: nil,
-                note: "",
-                emergencyClosed: true
-            )
-            wakeSessions.insert(session, at: 0)
-            saveWakeSessions()
-        }
-        if let alarm = triggeredAlarm {
-            scheduleSnooze(for: alarm)
-        }
-        isShowingChallenge = false
-        triggeredAlarm = nil
-        currentChallenge = nil
+        return session
     }
 
     func updateSessionFeedback(_ session: WakeSession, mood: WakeMood?, note: String) {
@@ -322,45 +326,6 @@ class AlarmManager: ObservableObject {
         )
     }
 
-    private func scheduleSnooze(for alarm: Alarm) {
-        let content = UNMutableNotificationContent()
-        content.title = "稍后提醒"
-        content.body = alarm.requiresChallenge ? "继续完成起床挑战" : "该起床了"
-        content.sound = AlarmSoundPlayer.notificationSound(named: alarm.soundName)
-        content.userInfo = ["alarmId": alarm.id.uuidString]
-
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(max(1, alarm.snoozeMinutes) * 60), repeats: false)
-        let request = UNNotificationRequest(identifier: snoozeIdentifier(for: alarm), content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request) { [weak self] _ in
-            Task { @MainActor in self?.refreshAlarmDeliverySnapshot() }
-        }
-    }
-
-    private func refreshAlarmDeliverySnapshotSoon() {
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(250))
-            refreshAlarmDeliverySnapshot()
-        }
-    }
-
-    nonisolated private static func nextTriggerDate(from trigger: UNNotificationTrigger?) -> Date? {
-        if let trigger = trigger as? UNCalendarNotificationTrigger {
-            return trigger.nextTriggerDate()
-        }
-        if let trigger = trigger as? UNTimeIntervalNotificationTrigger {
-            return trigger.nextTriggerDate()
-        }
-        return nil
-    }
-
-    private func notificationIdentifier(for alarm: Alarm, weekday: Int) -> String {
-        "\(alarm.id.uuidString)-weekday-\(weekday)"
-    }
-
-    private func snoozeIdentifier(for alarm: Alarm) -> String {
-        "\(alarm.id.uuidString)-snooze"
-    }
-
     private func makeMathQuestions(difficulty: MathDifficulty, count: Int) -> [MathQuestion] {
         (0..<Alarm.clampedMathQuestionCount(count)).map { _ in
             switch difficulty {
@@ -417,14 +382,6 @@ final class AlarmSoundPlayer {
         audioPlayer?.stop()
         audioPlayer = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    }
-
-    static func notificationSound(named soundName: String) -> UNNotificationSound {
-        let fileName = AlarmSound.option(named: soundName).fileName
-        guard Bundle.main.url(forResource: fileName, withExtension: nil) != nil else {
-            return .default
-        }
-        return UNNotificationSound(named: UNNotificationSoundName(fileName))
     }
 
     private static func soundURL(named soundName: String) -> URL? {

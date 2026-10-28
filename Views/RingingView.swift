@@ -99,7 +99,7 @@ struct RingingView: View {
     let record: ChallengeRecord
     let isTestMode: Bool
     let onCorrect: () -> Void
-    let onSnooze: () -> Void
+    let onEmergencyClose: () -> Void
 
     @State private var answer = ""
     @State private var result: Bool? = nil
@@ -113,17 +113,13 @@ struct RingingView: View {
     @StateObject private var speechController = SpeechChallengeController()
     @StateObject private var cameraController = CameraChallengeController()
 
-    init(record: ChallengeRecord, isTestMode: Bool = false, onCorrect: @escaping () -> Void, onSnooze: @escaping () -> Void) {
+    init(record: ChallengeRecord, isTestMode: Bool = false, onCorrect: @escaping () -> Void, onEmergencyClose: @escaping () -> Void) {
         self.record = record
         self.isTestMode = isTestMode
         self.onCorrect = onCorrect
-        self.onSnooze = onSnooze
+        self.onEmergencyClose = onEmergencyClose
         let requiredCount = ProcessInfo.processInfo.arguments.contains("--debugShakeRequiredCount") ? Self.debugShakeRequiredCount : record.shakeRequiredCount
         _shakeController = StateObject(wrappedValue: ShakeChallengeController(requiredCount: requiredCount))
-    }
-
-    private var time: String {
-        RingingDateFormatters.time.string(from: Date())
     }
 
     private static var debugShakeRequiredCount: Int {
@@ -151,10 +147,12 @@ struct RingingView: View {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(Bedside.text)
                     .padding(.bottom, 20)
-                Text(time)
-                    .font(.system(size: 82, weight: .light, design: .rounded))
-                    .monospacedDigit()
-                    .glow(Bedside.amber)
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text(RingingDateFormatters.time.string(from: context.date))
+                        .font(.system(size: 82, weight: .light, design: .rounded))
+                        .monospacedDigit()
+                        .glow(Bedside.amber)
+                }
                 if shouldShowExternalChallengePill {
                     BedsidePill(text: "挑战模式：\(record.type.rawValue)", icon: "shield.checkered")
                         .padding(.top, 10)
@@ -167,12 +165,12 @@ struct RingingView: View {
 
                 Spacer()
 
-                // 稍后提醒
-                Button { onSnooze() } label: {
+                // 紧急关闭
+                Button { onEmergencyClose() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: isTestMode ? "xmark.circle.fill" : "exclamationmark.triangle.fill")
                             .font(.system(size: 13))
-                        Text(isTestMode ? "退出测试" : "紧急关闭（将计入失败）")
+                        Text(isTestMode ? "退出测试" : "紧急关闭（计入失败）")
                             .font(.system(size: 14, weight: isTestMode ? .semibold : .medium))
                     }
                     .foregroundColor(isTestMode ? Bedside.subtext : Bedside.dim)
@@ -899,6 +897,6 @@ struct RingingAmbientBackground: View {
             startedAt: Date()
         ),
         onCorrect: {},
-        onSnooze: {}
+        onEmergencyClose: {}
     )
 }
